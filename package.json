@@ -1,0 +1,56 @@
+{
+  "name": "@codexstar/pi-voice",
+  "version": "3.0.0",
+  "description": "Hold-to-talk voice input for Pi CLI — Deepgram streaming STT with live transcription, voice commands, and cross-platform support",
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-extension",
+    "voice",
+    "speech-to-text",
+    "stt",
+    "deepgram",
+    "hold-to-talk",
+    "voice-input",
+    "transcription",
+    "streaming",
+    "terminal",
+    "cli"
+  ],
+  "author": "codexstar69",
+  "license": "MIT",
+  "homepage": "https://github.com/codexstar69/pi-listen#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codexstar69/pi-listen.git"
+  },
+  "bugs": {
+    "url": "https://github.com/codexstar69/pi-listen/issues"
+  },
+  "scripts": {
+    "typecheck": "bunx tsc -p tsconfig.json",
+    "test": "bun test",
+    "check": "bun run typecheck && bun run test",
+    "release:dry": "bun run check && bun publish --dry-run",
+    "release": "bun run check && bun publish --access public"
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/voice.ts"
+    ]
+  },
+  "files": [
+    "extensions",
+    "docs",
+    "scripts",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "package.json"
+  ]
+}

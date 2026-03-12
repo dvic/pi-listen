@@ -1,0 +1,48 @@
+# pi-voice
+
+> Hold-to-talk voice input for the Pi coding agent CLI.
+
+## Overview
+
+pi-voice is a Pi extension that adds streaming voice-to-text input to the Pi coding agent. Hold SPACE to record, release to transcribe — text appears in the editor in real time via Deepgram Nova 3 WebSocket streaming.
+
+## Core Documentation
+
+- [README](https://github.com/codexstar69/pi-listen/blob/main/README.md): Installation, usage, architecture
+- [Troubleshooting](https://github.com/codexstar69/pi-listen/blob/main/docs/troubleshooting.md): Common issues and solutions
+- [Contributing](https://github.com/codexstar69/pi-listen/blob/main/CONTRIBUTING.md): Development setup and guidelines
+- [Security](https://github.com/codexstar69/pi-listen/blob/main/SECURITY.md): Security policy
+- [Changelog](https://github.com/codexstar69/pi-listen/blob/main/CHANGELOG.md): Release history
+- [License](https://github.com/codexstar69/pi-listen/blob/main/LICENSE): MIT
+
+## Key Components
+
+- `extensions/voice.ts`: Main extension — hold-to-talk state machine, Deepgram streaming, voice commands, UI widgets, double-escape editor clear
+- `extensions/voice/config.ts`: Configuration loading, saving, migration, onboarding state
+- `extensions/voice/onboarding.ts`: Interactive first-run setup wizard (Deepgram API key)
+
+## Features
+
+- Hold-to-talk voice input (SPACE hold or Ctrl+Shift+V toggle)
+- Deepgram Nova 3 streaming STT with live interim transcripts
+- Voice commands: "hey pi, run tests", "undo", "submit", "new line", etc.
+- Continuous dictation mode (/voice dictate)
+- Double-escape clears editor text (cross-platform)
+- Kitty protocol support + non-Kitty gap-based fallback
+- Cross-platform: macOS, Windows, Linux
+
+## Commands
+
+- `/voice [on|off|stop|dictate|history|test|info|setup]`
+
+## Keybindings
+
+- `SPACE` (hold ≥800ms) — Record to editor
+- `Ctrl+Shift+V` — Toggle recording
+- `Escape` × 2 — Clear editor text
+
+## Installation
+
+```
+pi install npm:@codexstar/pi-voice
+```
