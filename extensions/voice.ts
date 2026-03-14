@@ -1843,37 +1843,76 @@ export default function (pi: ExtensionAPI) {
 				const hasSox = commandExists("rec");
 
 				const lines = [
-					"Voice test:",
-					`  language: ${config.language}`,
-					`  DEEPGRAM_API_KEY: ${dgKey ? "set (" + dgKey.slice(0, 8) + "…)" : "NOT SET"}`,
-					`  onboarding: ${config.onboarding.completed ? "complete" : "incomplete"}`,
-					`  sox/rec: ${hasSox ? "OK" : "missing"}`,
-					`  state: ${voiceState}`,
-					`  hold threshold: ${HOLD_THRESHOLD_MS}ms`,
-					`  kitty protocol: ${kittyReleaseDetected ? "detected" : "not detected"}`,
+					"Voice diagnostics:",
+					"",
+					"  Prerequisites:",
+					`    SoX (rec):        ${hasSox ? "OK" : "MISSING — brew install sox"}`,
+					`    DEEPGRAM_API_KEY:  ${dgKey ? "set (" + dgKey.slice(0, 8) + "…)" : "NOT SET"}`,
+					"",
+					"  Config:",
+					`    language:          ${config.language}`,
+					`    onboarding:        ${config.onboarding.completed ? "complete" : "incomplete"}`,
+					`    hold threshold:    ${HOLD_THRESHOLD_MS}ms`,
+					`    kitty protocol:    ${kittyReleaseDetected ? "detected" : "not detected"}`,
+					`    state:             ${voiceState}`,
 				];
 
+				// Mic capture test
 				if (hasSox) {
 					const testFile = path.join(os.tmpdir(), "pi-voice-test.wav");
 					const testProc = spawn("rec", ["-q", "-r", "16000", "-c", "1", "-b", "16", "-d", "1", testFile], { stdio: "pipe" });
-					testProc.on("error", () => {}); // Prevent unhandled error crash
+					testProc.on("error", () => {});
 					await new Promise<void>((resolve) => {
 						testProc.on("close", () => resolve());
 						setTimeout(() => { try { testProc.kill(); } catch {} resolve(); }, 2000);
 					});
 					if (fs.existsSync(testFile)) {
 						const size = fs.statSync(testFile).size;
-						lines.push(`  mic sample: OK (${size} bytes)`);
+						lines.push(`    mic capture:       OK (${size} bytes)`);
 						try { fs.unlinkSync(testFile); } catch {}
 					} else {
-						lines.push("  mic sample: missing audio");
+						lines.push("    mic capture:       FAILED — no audio captured");
+					}
+				} else {
+					lines.push("    mic capture:       skipped (SoX not installed)");
+				}
+
+				// Deepgram API key validation
+				if (dgKey) {
+					try {
+						const res = await fetch("https://api.deepgram.com/v1/projects", {
+							method: "GET",
+							headers: { "Authorization": `Token ${dgKey}` },
+							signal: AbortSignal.timeout(5000),
+						});
+						if (res.ok) {
+							lines.push("    Deepgram API:      OK (key validated)");
+						} else if (res.status === 401 || res.status === 403) {
+							lines.push("    Deepgram API:      INVALID KEY — check your API key");
+						} else {
+							lines.push(`    Deepgram API:      ERROR (HTTP ${res.status})`);
+						}
+					} catch (err) {
+						const msg = err instanceof Error ? err.message : String(err);
+						lines.push(`    Deepgram API:      UNREACHABLE — ${msg}`);
 					}
 				}
 
+				// Summary
+				lines.push("");
 				if (!dgKey) {
-					lines.push("");
-					lines.push("⚠️  DEEPGRAM_API_KEY not set! Add to ~/.zshrc or ~/.env.secrets");
-					lines.push("   export DEEPGRAM_API_KEY=your_key_here");
+					lines.push("  Setup needed:");
+					lines.push("    1. Get a free key → https://dpgr.am/pi-voice ($200 free credit)");
+					lines.push("    2. export DEEPGRAM_API_KEY=\"your-key\" (add to ~/.zshrc)");
+					lines.push("    3. Or run /voice setup to paste it interactively");
+				} else if (!hasSox) {
+					lines.push("  Setup needed:");
+					lines.push("    brew install sox    # macOS");
+					lines.push("    apt install sox     # Linux");
+					lines.push("    choco install sox   # Windows");
+				} else {
+					lines.push("  All checks passed — voice is ready!");
+					lines.push("  Hold SPACE to record, or use Ctrl+Shift+V to toggle.");
 				}
 
 				const ready = !!dgKey && hasSox;
