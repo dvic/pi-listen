@@ -149,8 +149,13 @@ function updateAudioLevel(chunk: Buffer) {
 		}
 	}
 	const rms = Math.sqrt(sum / samples);
-	audioLevel = rms < 8000 ? rms / 8000 : 1;
-	audioLevelSmoothed = audioLevelSmoothed * 0.6 + audioLevel * 0.4;
+	// Lower ceiling (2500) so normal speech hits 0.5-0.9 instead of 0.1-0.3
+	// Power curve (^0.6) boosts quiet sounds for more visible reactivity
+	audioLevel = Math.min(1, Math.pow(Math.min(rms / 2500, 1), 0.6));
+	// Faster attack (0.35 old), slower decay — snappy peaks, smooth falloff
+	audioLevelSmoothed = audioLevel > audioLevelSmoothed
+		? audioLevelSmoothed * 0.35 + audioLevel * 0.65
+		: audioLevelSmoothed * 0.75 + audioLevel * 0.25;
 }
 
 function voiceDebug(...args: unknown[]) {
@@ -749,12 +754,19 @@ export default function (pi: ExtensionAPI) {
 
 	function buildMiniWave(level: number): string {
 		const bars = "▁▂▃▄▅▆▇█";
-		const len = 8;
+		const len = 12;
 		let out = "";
 		const t = Date.now() / 1000;
+		const energy = Math.pow(level, 0.7); // Boost low levels
 		for (let i = 0; i < len; i++) {
-			const wave = Math.sin(t * 3 + i * 0.8) * 0.3 + 0.5;
-			const value = Math.max(0, Math.min(1, wave * level));
+			const pos = i / len;
+			// Multi-frequency sine for organic movement
+			const wave1 = Math.sin(t * 4.5 + i * 0.9) * 0.35;
+			const wave2 = Math.sin(t * 7.2 + i * 1.4 + 2.0) * 0.15;
+			// Center emphasis — bars in the middle are taller
+			const center = 1.0 - Math.abs(pos - 0.5) * 1.2;
+			const base = 0.15 + energy * 0.85; // Always show some movement
+			const value = Math.max(0, Math.min(1, (wave1 + wave2 + 0.5) * base * center));
 			const idx = Math.min(bars.length - 1, Math.round(value * (bars.length - 1)));
 			out += bars[idx];
 		}
