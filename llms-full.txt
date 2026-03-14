@@ -23,7 +23,7 @@
 5. **56+ languages:** `/voice-language` fuzzy picker — Chinese auto-switches to Nova-2.
 6. **Continuous dictation:** `/voice dictate` for long-form speaking without holding keys.
 7. **Double-escape clear:** Two Escape presses within 500ms clears the editor.
-8. **Zero-config start:** Auto-activates if `DEEPGRAM_API_KEY` is set. First-run hint with signup link if not.
+8. **First-run diagnostics:** Checks API key and audio capture tool on first launch. Shows what's ready, what's missing, and how to install. Auto-activates if everything is configured.
 9. **API validation:** `/voice test` validates audio tool, mic capture, and Deepgram key against the live API.
 10. **Reactive waveform:** Audio-level-driven animation with fast attack / slow decay smoothing.
 11. **Typing cooldown:** Space holds within 400ms of other keypresses are ignored — prevents false activation mid-sentence.
@@ -75,7 +75,7 @@ Gap-based. Counts rapid presses to confirm hold (REPEAT_CONFIRM_COUNT=6). Gap > 
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `extensions/voice.ts` | ~2128 | Main: audio fallback chain, Deepgram WebSocket, pre-recording, tail recording, hold-to-talk state machine, waveform widget, sound feedback, double-escape, typing cooldown, session corruption guard, first-run hint, `/voice` commands |
+| `extensions/voice.ts` | ~2128 | Main: audio fallback chain (sox/ffmpeg/arecord), Deepgram WebSocket, pre-recording, tail recording, hold-to-talk state machine, waveform widget, sound feedback, double-escape, typing cooldown, session corruption guard, first-run diagnostics (API key + audio tool check), `/voice` commands |
 | `extensions/voice/config.ts` | ~167 | VoiceConfig type, load/save, schema migration, onboarding state |
 | `extensions/voice/onboarding.ts` | ~163 | Setup wizard — Deepgram key entry, scope selection, language picker (56+ languages) |
 | `extensions/voice/deepgram.ts` | ~30 | WebSocket URL builder, API key resolver |

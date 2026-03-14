@@ -11,9 +11,8 @@ pi-listen adds streaming voice-to-text input to Pi. Hold SPACE to record, releas
 1. `pi install npm:@codexstar/pi-listen` (outside Pi)
 2. Get key at https://dpgr.am/pi-voice ($200 free credit)
 3. `export DEEPGRAM_API_KEY="your-key"` in ~/.zshrc
-4. Open Pi — auto-activates, or run `/voice-setup`
-
-Audio capture auto-detects: sox (preferred) → ffmpeg → arecord (Linux). No mandatory install.
+4. Open Pi — first-run checks API key + audio tool, tells you what's ready/missing
+5. Audio capture auto-detects: sox → ffmpeg → arecord. Install one if missing.
 
 ## Documentation
 

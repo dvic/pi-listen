@@ -31,11 +31,15 @@ export DEEPGRAM_API_KEY="your-key-here"    # add to ~/.zshrc or ~/.bashrc
 
 ### 3. Open Pi
 
-If `DEEPGRAM_API_KEY` is set, voice auto-activates with a keybinding guide. Otherwise run `/voice-setup` inside Pi to paste your key interactively.
+On first launch, pi-listen checks your setup and tells you exactly what's ready and what's missing:
+- Deepgram API key — set or not
+- Audio capture tool — sox, ffmpeg, or arecord (auto-detected)
+- If everything is configured, voice activates immediately with a keybinding guide
+- If something is missing, you get step-by-step instructions
 
 ### Audio capture
 
-pi-listen auto-detects your audio capture tool. No manual install needed on most systems.
+pi-listen auto-detects your audio capture tool. No manual install needed if you already have sox or ffmpeg.
 
 | Priority | Tool | Platforms | Install |
 |----------|------|-----------|---------|
@@ -100,7 +104,7 @@ If none are found, `/voice test` tells you what to install.
 | **Continuous dictation** | `/voice dictate` for long-form input without holding keys |
 | **Double-escape clear** | Press Escape twice to clear the editor |
 | **Zero-config start** | Auto-activates if `DEEPGRAM_API_KEY` is set — no wizard needed |
-| **First-run hint** | Shows setup instructions with Deepgram signup link on first launch |
+| **First-run diagnostics** | Checks API key + audio tool on first launch, shows what's ready and what to install |
 | **API key validation** | `/voice test` validates your key against the live Deepgram API |
 | **Typing cooldown** | Space holds within 400ms of typing are ignored — voice never fires mid-sentence |
 | **Sound feedback** | macOS system sounds for start, stop, and error events |
