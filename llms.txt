@@ -24,11 +24,11 @@ Audio capture auto-detects: sox (preferred) → ffmpeg → arecord (Linux). No m
 
 ## Components
 
-- `extensions/voice.ts`: Main extension — hold-to-talk state machine, pre-recording, tail recording, Deepgram streaming, voice commands, waveform widget, double-escape editor clear
+- `extensions/voice.ts`: Main extension — hold-to-talk state machine, pre-recording, tail recording, Deepgram streaming, editor actions, waveform widget, double-escape editor clear
 - `extensions/voice/config.ts`: Config loading, saving, migration
 - `extensions/voice/onboarding.ts`: First-run setup wizard
 - `extensions/voice/deepgram.ts`: Deepgram URL builder, API key resolver
-- `extensions/voice/text-processing.ts`: Voice command detection, punctuation shortcuts
+- `extensions/voice/text-processing.ts`: Editor actions (undo, clear, new line), punctuation shortcuts
 
 ## Keybindings
 
@@ -42,17 +42,16 @@ Audio capture auto-detects: sox (preferred) → ffmpeg → arecord (Linux). No m
 - `/voice test` — Full diagnostics (audio tool, mic, API key validation)
 - `/voice [on|off|dictate|stop|info|history]`
 
-## Voice Commands
+## Editor Actions
 
-Session: "new session", "compact", "fork", "resume", "tree", "reload", "settings"
-Model: "switch model", "next model", "previous model", "switch to X" (direct model name)
-Thinking: "cycle thinking", "more thinking", "show/hide thinking"
-Display: "expand/collapse tools", "show/hide tools"
-Editor: "open editor", "vim", "undo", "clear", "select all", "new line", "submit", "send"
-Control: "stop", "cancel", "abort"
-Dev: "run tests", "run typecheck", "run lint", "build", "install", "format", "commit", "push", "pull", "show log", "git status", "git diff"
-Agent: "hey pi, ..." (sends message), "hey pi, search for X"
-Punctuation: "period", "comma", "question mark", "exclamation mark", "colon", "semicolon", "hash", "at sign", "dollar sign", "ampersand", "percent", "asterisk", "tab", plus parentheses/brackets/braces/slashes
+Say these during recording:
+- "undo" / "undo that" — removes last word from editor
+- "clear" / "clear all" — clears editor
+- "new line" — inserts newline
+
+## Punctuation Shortcuts
+
+"period", "comma", "question mark", "exclamation mark", "colon", "semicolon", "hash", "at sign", "dollar sign", "ampersand", "percent", "asterisk", "tab", plus parentheses/brackets/braces/slashes
 
 ## Installation
 

@@ -83,72 +83,17 @@ If none are found, `/voice test` tells you what to install.
 | `/voice history` | Recent transcriptions |
 | `/voice` | Toggle on/off |
 
-### Voice commands
+### Editor actions
 
 Say these during recording — detected and executed automatically:
 
-#### Session management
-
 | Say this | Does this |
 |----------|-----------|
-| "new session" / "start over" / "fresh session" / "new chat" | Starts a new Pi session (`/new`) |
-| "compact" / "compress" / "compress context" | Compacts context (`/compact`) |
-| "fork" / "fork session" | Forks current session (`/fork`) |
-| "resume" / "resume session" | Resumes a previous session (`/resume`) |
-| "tree" / "show tree" / "session tree" | Shows session tree (`/tree`) |
-| "reload" / "reload extensions" | Reloads extensions (`/reload`) |
-| "settings" / "open settings" | Opens settings (`/settings`) |
-
-#### Model and thinking
-
-| Say this | Does this |
-|----------|-----------|
-| "switch model" / "change model" / "select model" | Opens model picker (`/model`) |
-| "next model" / "cycle model" | Cycles model forward |
-| "previous model" | Cycles model backward |
-| "switch to X" / "change to X" | Switches to model named X (`/model X`) |
-| "more thinking" / "cycle thinking" / "thinking level" | Cycles thinking level (`/thinking`) |
-| "show thinking" / "hide thinking" / "toggle thinking" | Toggles thinking visibility |
-
-#### Display and editor
-
-| Say this | Does this |
-|----------|-----------|
-| "expand tools" / "show tools" | Expands tool call display |
-| "collapse tools" / "hide tools" | Collapses tool call display |
-| "open editor" / "external editor" / "vim" | Opens external editor (`/editor`) |
 | "undo" / "undo that" | Removes last word from editor |
 | "clear" / "clear all" | Clears editor |
-| "select all" | Selects all editor text |
 | "new line" | Inserts newline |
-| "submit" / "send" / "send it" | Submits editor content |
 
-#### Control
-
-| Say this | Does this |
-|----------|-----------|
-| "stop" / "cancel" / "abort" | Interrupts the agent |
-| "hey pi, ..." | Sends any message directly to the agent |
-| "hey pi, search for X" | Searches for X |
-
-#### Dev commands
-
-| Say this | Does this |
-|----------|-----------|
-| "run tests" / "run all tests" | `bun run test` |
-| "run typecheck" / "type check" | `bun run typecheck` |
-| "run lint" / "lint this" | `bun run lint` |
-| "build" / "run build" / "build this" | `bun run build` |
-| "install" / "install packages" / "install dependencies" | `bun install` |
-| "format" / "format this" | `bun run format` |
-| "commit" / "commit this" | `git add -A && git commit` |
-| "push" / "git push" / "push this" | `git push` |
-| "pull" / "git pull" | `git pull` |
-| "show log" / "git log" | `git log --oneline -20` |
-| "git status" | `git status` |
-| "git diff" | `git diff` |
-
-#### Punctuation shortcuts
+### Punctuation shortcuts
 
 | Say this | Inserts |
 |----------|---------|
@@ -180,7 +125,7 @@ Say these during recording — detected and executed automatically:
 | **Tail recording** | Keeps recording 1.5s after release so your last word isn't clipped |
 | **Live streaming** | Deepgram Nova 3 WebSocket — interim transcripts appear as you speak |
 | **Reactive waveform** | Audio-level-driven animation with fast attack / slow decay |
-| **60+ voice commands** | Session, model, thinking, display, editor, dev, and control commands |
+| **Editor actions** | "undo", "clear", and "new line" for quick text editing |
 | **20 punctuation shortcuts** | "period", "hash", "at sign", "dollar sign", "tab", and more |
 | **Continuous dictation** | `/voice dictate` for long-form input without holding keys |
 | **Double-escape clear** | Press Escape twice to clear the editor |
@@ -235,7 +180,7 @@ extensions/voice.ts              Main extension — state machine, recording, UI
 extensions/voice/config.ts       Config loading, saving, migration
 extensions/voice/onboarding.ts   First-run setup wizard
 extensions/voice/deepgram.ts     Deepgram URL builder, API key resolver
-extensions/voice/text-processing.ts  Voice command detection, punctuation shortcuts
+extensions/voice/text-processing.ts  Editor actions, punctuation shortcuts
 ```
 
 ---

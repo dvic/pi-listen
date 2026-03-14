@@ -20,7 +20,7 @@
 2. **Pre-recording:** Audio capture starts during the warmup countdown — the user never misses the first word.
 3. **Hold-to-talk:** User holds SPACE → audio tool streams to Deepgram → interim transcripts appear in editor in real time → release to finalize.
 4. **Tail recording:** Recording continues 1.5s after release so the last word isn't clipped.
-5. **60+ voice commands:** Session management, model switching, thinking control, display toggles, editor actions, dev commands, agent control — all by voice.
+5. **Editor actions:** "undo", "clear", and "new line" for quick text editing by voice.
 6. **20 punctuation shortcuts:** "period", "hash", "at sign", "dollar sign", "tab", and 15 more.
 7. **Continuous dictation:** `/voice dictate` for long-form speaking without holding keys.
 8. **Double-escape clear:** Two Escape presses within 500ms clears the editor.
@@ -77,11 +77,11 @@ Gap-based. Counts rapid presses to confirm hold (REPEAT_CONFIRM_COUNT=6). Gap > 
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `extensions/voice.ts` | ~2128 | Main: audio fallback chain, Deepgram WebSocket, pre-recording, tail recording, hold-to-talk state machine, 60+ voice commands, waveform widget, sound feedback, double-escape, typing cooldown, session corruption guard, first-run hint, `/voice` commands |
+| `extensions/voice.ts` | ~2128 | Main: audio fallback chain, Deepgram WebSocket, pre-recording, tail recording, hold-to-talk state machine, editor actions, waveform widget, sound feedback, double-escape, typing cooldown, session corruption guard, first-run hint, `/voice` commands |
 | `extensions/voice/config.ts` | ~167 | VoiceConfig type, load/save, schema migration, onboarding state |
 | `extensions/voice/onboarding.ts` | ~163 | Setup wizard — Deepgram key entry, scope selection |
 | `extensions/voice/deepgram.ts` | ~30 | WebSocket URL builder, API key resolver |
-| `extensions/voice/text-processing.ts` | ~184 | Voice command detection (session, model, thinking, display, editor, dev, control), 20 punctuation/symbol shortcuts |
+| `extensions/voice/text-processing.ts` | ~184 | Editor actions (undo, clear, new line), 20 punctuation/symbol shortcuts |
 
 ---
 
@@ -122,67 +122,15 @@ Gap-based. Counts rapid presses to confirm hold (REPEAT_CONFIRM_COUNT=6). Gap > 
 | `Ctrl+Shift+V` | Toggle recording |
 | `Escape` × 2 | Clear editor |
 
-## Voice Commands
+## Editor Actions
 
-### Session management
+Say these during recording — detected and executed automatically:
+
 | Trigger | Action |
 |---------|--------|
-| "new session" / "start over" / "fresh session" / "new chat" | `/new` |
-| "compact" / "compress" / "compress context" | `/compact` |
-| "fork" / "fork session" | `/fork` |
-| "resume" / "resume session" | `/resume` |
-| "tree" / "show tree" / "session tree" | `/tree` |
-| "reload" / "reload extensions" | `/reload` |
-| "settings" / "open settings" | `/settings` |
-
-### Model and thinking
-| Trigger | Action |
-|---------|--------|
-| "switch model" / "change model" / "select model" / "pick model" | `/model` (picker) |
-| "next model" / "cycle model" | Cycle model forward |
-| "previous model" | Cycle model backward |
-| "switch to X" / "change to X" | `/model X` (direct name) |
-| "more thinking" / "cycle thinking" / "thinking level" | `/thinking` (cycle level) |
-| "show thinking" / "hide thinking" / "toggle thinking" | Toggle thinking visibility |
-
-### Display
-| Trigger | Action |
-|---------|--------|
-| "expand tools" / "show tools" | Expand tool call display |
-| "collapse tools" / "hide tools" | Collapse tool call display |
-
-### Editor
-| Trigger | Action |
-|---------|--------|
-| "open editor" / "external editor" / "vim" | `/editor` |
 | "undo" / "undo that" | Remove last word |
 | "clear" / "clear all" | Clear editor |
-| "select all" | Select all |
 | "new line" | Insert newline |
-| "submit" / "send" / "send it" | Submit editor content |
-
-### Control
-| Trigger | Action |
-|---------|--------|
-| "stop" / "cancel" / "abort" | Interrupt agent |
-| "hey pi, ..." | Send message to agent |
-| "hey pi, search for X" | Search for X |
-
-### Dev commands
-| Trigger | Action |
-|---------|--------|
-| "run tests" / "run all tests" | `bun run test` |
-| "run typecheck" / "type check" | `bun run typecheck` |
-| "run lint" / "lint this" | `bun run lint` |
-| "build" / "run build" / "build this" | `bun run build` |
-| "install" / "install packages" / "install dependencies" | `bun install` |
-| "format" / "format this" | `bun run format` |
-| "commit" / "commit this" | `git add -A && git commit` |
-| "push" / "git push" / "push this" | `git push` |
-| "pull" / "git pull" | `git pull` |
-| "show log" / "git log" | `git log --oneline -20` |
-| "git status" | `git status` |
-| "git diff" | `git diff` |
 
 ### Punctuation and symbol shortcuts
 | Trigger | Inserts |
