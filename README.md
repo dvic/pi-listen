@@ -76,43 +76,14 @@ If none are found, `/voice test` tells you what to install.
 |---------|-------------|
 | `/voice-setup` | Interactive setup wizard (Deepgram key, scope) |
 | `/voice test` | Full diagnostics — audio tool, mic capture, API key validation |
+| `/voice-language` | Change transcription language (56+ supported, fuzzy picker) |
+| `/voice-settings` | Show current voice config |
 | `/voice on` / `off` | Enable or disable voice |
 | `/voice dictate` | Continuous dictation (no key hold needed) |
 | `/voice stop` | Stop active recording or dictation |
 | `/voice info` | Show current config and status |
 | `/voice history` | Recent transcriptions |
 | `/voice` | Toggle on/off |
-
-### Editor actions
-
-Say these during recording — detected and executed automatically:
-
-| Say this | Does this |
-|----------|-----------|
-| "undo" / "undo that" | Removes last word from editor |
-| "clear" / "clear all" | Clears editor |
-| "new line" | Inserts newline |
-
-### Punctuation shortcuts
-
-| Say this | Inserts |
-|----------|---------|
-| "period" | `.` |
-| "comma" | `,` |
-| "question mark" | `?` |
-| "exclamation mark" | `!` |
-| "colon" / "semicolon" | `:` / `;` |
-| "open/close parenthesis" | `(` / `)` |
-| "open/close bracket" | `[` / `]` |
-| "open/close brace" | `{` / `}` |
-| "backslash" / "forward slash" | `\` / `/` |
-| "hash" | `#` |
-| "at sign" | `@` |
-| "dollar sign" | `$` |
-| "ampersand" | `&` |
-| "percent" | `%` |
-| "asterisk" | `*` |
-| "tab" | Tab character |
 
 ---
 
@@ -125,8 +96,7 @@ Say these during recording — detected and executed automatically:
 | **Tail recording** | Keeps recording 1.5s after release so your last word isn't clipped |
 | **Live streaming** | Deepgram Nova 3 WebSocket — interim transcripts appear as you speak |
 | **Reactive waveform** | Audio-level-driven animation with fast attack / slow decay |
-| **Editor actions** | "undo", "clear", and "new line" for quick text editing |
-| **20 punctuation shortcuts** | "period", "hash", "at sign", "dollar sign", "tab", and more |
+| **56+ languages** | `/voice-language` fuzzy picker — Chinese auto-switches to Nova-2 |
 | **Continuous dictation** | `/voice dictate` for long-form input without holding keys |
 | **Double-escape clear** | Press Escape twice to clear the editor |
 | **Zero-config start** | Auto-activates if `DEEPGRAM_API_KEY` is set — no wizard needed |
@@ -178,9 +148,8 @@ Both modes: ≥1.2s hold to activate. Quick taps type a normal space.
 ```
 extensions/voice.ts              Main extension — state machine, recording, UI
 extensions/voice/config.ts       Config loading, saving, migration
-extensions/voice/onboarding.ts   First-run setup wizard
+extensions/voice/onboarding.ts   First-run setup wizard, language picker
 extensions/voice/deepgram.ts     Deepgram URL builder, API key resolver
-extensions/voice/text-processing.ts  Editor actions, punctuation shortcuts
 ```
 
 ---

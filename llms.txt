@@ -24,11 +24,10 @@ Audio capture auto-detects: sox (preferred) → ffmpeg → arecord (Linux). No m
 
 ## Components
 
-- `extensions/voice.ts`: Main extension — hold-to-talk state machine, pre-recording, tail recording, Deepgram streaming, editor actions, waveform widget, double-escape editor clear
+- `extensions/voice.ts`: Main extension — hold-to-talk state machine, pre-recording, tail recording, Deepgram streaming, waveform widget, double-escape editor clear
 - `extensions/voice/config.ts`: Config loading, saving, migration
-- `extensions/voice/onboarding.ts`: First-run setup wizard
+- `extensions/voice/onboarding.ts`: First-run setup wizard, language picker (56+ languages)
 - `extensions/voice/deepgram.ts`: Deepgram URL builder, API key resolver
-- `extensions/voice/text-processing.ts`: Editor actions (undo, clear, new line), punctuation shortcuts
 
 ## Keybindings
 
@@ -40,18 +39,9 @@ Audio capture auto-detects: sox (preferred) → ffmpeg → arecord (Linux). No m
 
 - `/voice-setup` — Interactive setup wizard
 - `/voice test` — Full diagnostics (audio tool, mic, API key validation)
+- `/voice-language` — Change transcription language (56+ supported, fuzzy picker)
+- `/voice-settings` — Show current voice config
 - `/voice [on|off|dictate|stop|info|history]`
-
-## Editor Actions
-
-Say these during recording:
-- "undo" / "undo that" — removes last word from editor
-- "clear" / "clear all" — clears editor
-- "new line" — inserts newline
-
-## Punctuation Shortcuts
-
-"period", "comma", "question mark", "exclamation mark", "colon", "semicolon", "hash", "at sign", "dollar sign", "ampersand", "percent", "asterisk", "tab", plus parentheses/brackets/braces/slashes
 
 ## Installation
 

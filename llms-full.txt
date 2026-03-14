@@ -20,17 +20,16 @@
 2. **Pre-recording:** Audio capture starts during the warmup countdown — the user never misses the first word.
 3. **Hold-to-talk:** User holds SPACE → audio tool streams to Deepgram → interim transcripts appear in editor in real time → release to finalize.
 4. **Tail recording:** Recording continues 1.5s after release so the last word isn't clipped.
-5. **Editor actions:** "undo", "clear", and "new line" for quick text editing by voice.
-6. **20 punctuation shortcuts:** "period", "hash", "at sign", "dollar sign", "tab", and 15 more.
-7. **Continuous dictation:** `/voice dictate` for long-form speaking without holding keys.
-8. **Double-escape clear:** Two Escape presses within 500ms clears the editor.
-9. **Zero-config start:** Auto-activates if `DEEPGRAM_API_KEY` is set. First-run hint with signup link if not.
-10. **API validation:** `/voice test` validates audio tool, mic capture, and Deepgram key against the live API.
-11. **Reactive waveform:** Audio-level-driven animation with fast attack / slow decay smoothing.
-12. **Typing cooldown:** Space holds within 400ms of other keypresses are ignored — prevents false activation mid-sentence.
-13. **Sound feedback:** macOS system sounds (Tink/Pop/Basso) for start, stop, and error events.
-14. **Session corruption guard:** Overlapping recording requests abort the stale session before starting a new one.
-15. **Cross-platform:** Kitty protocol + non-Kitty gap-based fallback. macOS, Windows, Linux.
+5. **56+ languages:** `/voice-language` fuzzy picker — Chinese auto-switches to Nova-2.
+6. **Continuous dictation:** `/voice dictate` for long-form speaking without holding keys.
+7. **Double-escape clear:** Two Escape presses within 500ms clears the editor.
+8. **Zero-config start:** Auto-activates if `DEEPGRAM_API_KEY` is set. First-run hint with signup link if not.
+9. **API validation:** `/voice test` validates audio tool, mic capture, and Deepgram key against the live API.
+10. **Reactive waveform:** Audio-level-driven animation with fast attack / slow decay smoothing.
+11. **Typing cooldown:** Space holds within 400ms of other keypresses are ignored — prevents false activation mid-sentence.
+12. **Sound feedback:** macOS system sounds (Tink/Pop/Basso) for start, stop, and error events.
+13. **Session corruption guard:** Overlapping recording requests abort the stale session before starting a new one.
+14. **Cross-platform:** Kitty protocol + non-Kitty gap-based fallback. macOS, Windows, Linux.
 
 ---
 
@@ -41,8 +40,7 @@ Pi CLI (Node.js)
   └── extensions/voice.ts (~2128 lines)
         ├── extensions/voice/config.ts (~167 lines)
         ├── extensions/voice/onboarding.ts (~163 lines)
-        ├── extensions/voice/deepgram.ts (~30 lines)
-        └── extensions/voice/text-processing.ts (~184 lines)
+        └── extensions/voice/deepgram.ts (~30 lines)
         │
         │ Audio capture (sox → ffmpeg → arecord fallback)
         │ WebSocket (streaming PCM audio)
@@ -77,11 +75,10 @@ Gap-based. Counts rapid presses to confirm hold (REPEAT_CONFIRM_COUNT=6). Gap > 
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `extensions/voice.ts` | ~2128 | Main: audio fallback chain, Deepgram WebSocket, pre-recording, tail recording, hold-to-talk state machine, editor actions, waveform widget, sound feedback, double-escape, typing cooldown, session corruption guard, first-run hint, `/voice` commands |
+| `extensions/voice.ts` | ~2128 | Main: audio fallback chain, Deepgram WebSocket, pre-recording, tail recording, hold-to-talk state machine, waveform widget, sound feedback, double-escape, typing cooldown, session corruption guard, first-run hint, `/voice` commands |
 | `extensions/voice/config.ts` | ~167 | VoiceConfig type, load/save, schema migration, onboarding state |
-| `extensions/voice/onboarding.ts` | ~163 | Setup wizard — Deepgram key entry, scope selection |
+| `extensions/voice/onboarding.ts` | ~163 | Setup wizard — Deepgram key entry, scope selection, language picker (56+ languages) |
 | `extensions/voice/deepgram.ts` | ~30 | WebSocket URL builder, API key resolver |
-| `extensions/voice/text-processing.ts` | ~184 | Editor actions (undo, clear, new line), 20 punctuation/symbol shortcuts |
 
 ---
 
@@ -106,6 +103,8 @@ Gap-based. Counts rapid presses to confirm hold (REPEAT_CONFIRM_COUNT=6). Gap > 
 | Command | Description |
 |---------|-------------|
 | `/voice-setup` | Interactive setup wizard |
+| `/voice-language` | Change transcription language (56+ supported, fuzzy picker) |
+| `/voice-settings` | Show current voice config |
 | `/voice test` | Full diagnostics — audio tool, mic, API key validation |
 | `/voice` | Toggle on/off |
 | `/voice on` / `off` | Enable / disable |
@@ -121,33 +120,6 @@ Gap-based. Counts rapid presses to confirm hold (REPEAT_CONFIRM_COUNT=6). Gap > 
 | `SPACE` (hold ≥1.2s) | Record with pre-recording + tail recording |
 | `Ctrl+Shift+V` | Toggle recording |
 | `Escape` × 2 | Clear editor |
-
-## Editor Actions
-
-Say these during recording — detected and executed automatically:
-
-| Trigger | Action |
-|---------|--------|
-| "undo" / "undo that" | Remove last word |
-| "clear" / "clear all" | Clear editor |
-| "new line" | Insert newline |
-
-### Punctuation and symbol shortcuts
-| Trigger | Inserts |
-|---------|---------|
-| "period" / "comma" / "question mark" / "exclamation mark" | `. , ? !` |
-| "colon" / "semicolon" | `: ;` |
-| "open/close parenthesis" | `( )` |
-| "open/close bracket" | `[ ]` |
-| "open/close brace" | `{ }` |
-| "backslash" / "forward slash" | `\ /` |
-| "hash" | `#` |
-| "at sign" | `@` |
-| "dollar sign" | `$` |
-| "ampersand" | `&` |
-| "percent" | `%` |
-| "asterisk" | `*` |
-| "tab" | Tab character |
 
 ---
 

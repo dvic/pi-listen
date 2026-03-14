@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-03-14
+
+### Removed
+- **All voice commands and text processing** — removed "undo", "clear", "new line", and all other voice commands. Removed all punctuation shortcuts ("period", "comma", etc.). Deleted `text-processing.ts` module entirely. Live streaming transcription writes text to the editor before voice commands can be detected, making them fundamentally unreliable. pi-listen now does one thing well: hold space to record, release to transcribe.
+
 ## [3.4.0] - 2026-03-14
 
 ### Removed
@@ -94,6 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - VAD pre-filtering
 - Pompom/Lumo creature companion (now separate package)
 
+[4.0.0]: https://github.com/codexstar69/pi-listen/releases/tag/v4.0.0
 [3.4.0]: https://github.com/codexstar69/pi-listen/releases/tag/v3.4.0
 [3.3.1]: https://github.com/codexstar69/pi-listen/releases/tag/v3.3.1
 [3.3.3]: https://github.com/codexstar69/pi-listen/releases/tag/v3.3.3
