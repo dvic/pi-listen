@@ -31,7 +31,7 @@ pi-listen adds streaming voice-to-text input to Pi. Hold SPACE to record, releas
 
 ## Keybindings
 
-- `SPACE` (hold ≥800ms) — Record to editor (pre-records during warmup)
+- `SPACE` (hold ≥1.2s) — Record to editor (pre-records during warmup)
 - `Ctrl+Shift+V` — Toggle recording
 - `Escape` × 2 — Clear editor text
 

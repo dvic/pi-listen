@@ -25,7 +25,10 @@
 7. **Zero-config start:** Auto-activates if `DEEPGRAM_API_KEY` is set. First-run hint with signup link if not.
 8. **API validation:** `/voice test` validates SoX, mic capture, and Deepgram key against the live API.
 9. **Reactive waveform:** Audio-level-driven animation with fast attack / slow decay smoothing.
-10. **Cross-platform:** Kitty protocol + non-Kitty gap-based fallback. macOS, Windows, Linux.
+10. **Typing cooldown:** Space holds within 400ms of other keypresses are ignored — prevents false activation mid-sentence.
+11. **Sound feedback:** macOS system sounds (Tink/Pop/Basso) for start, stop, and error events.
+12. **Session corruption guard:** Overlapping recording requests abort the stale session before starting a new one.
+13. **Cross-platform:** Kitty protocol + non-Kitty gap-based fallback. macOS, Windows, Linux.
 
 ---
 
@@ -33,11 +36,11 @@
 
 ```
 Pi CLI (Node.js)
-  └── extensions/voice.ts (~1950 lines)
-        ├── extensions/voice/config.ts (~170 lines)
-        ├── extensions/voice/onboarding.ts (~160 lines)
+  └── extensions/voice.ts (~2000 lines)
+        ├── extensions/voice/config.ts (~167 lines)
+        ├── extensions/voice/onboarding.ts (~163 lines)
         ├── extensions/voice/deepgram.ts (~30 lines)
-        └── extensions/voice/text-processing.ts (~100 lines)
+        └── extensions/voice/text-processing.ts (~99 lines)
         │
         │ WebSocket (streaming PCM audio)
         ▼
@@ -63,7 +66,7 @@ idle → warmup → recording → finalizing → idle
 True key events. First press → warmup + pre-recording. Release → tail recording → stop.
 
 **B) Non-Kitty** (macOS Terminal, older terminals):
-Gap-based. Counts rapid presses to confirm hold (REPEAT_CONFIRM_COUNT=3). Gap = released.
+Gap-based. Counts rapid presses to confirm hold (REPEAT_CONFIRM_COUNT=6). Gap > RELEASE_DETECT_MS = released.
 
 ---
 
@@ -71,11 +74,11 @@ Gap-based. Counts rapid presses to confirm hold (REPEAT_CONFIRM_COUNT=3). Gap = 
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `extensions/voice.ts` | ~1950 | Main: SoX recording, Deepgram WebSocket, pre-recording, tail recording, hold-to-talk state machine, voice commands, waveform widget, double-escape, first-run hint, `/voice` commands |
-| `extensions/voice/config.ts` | ~170 | VoiceConfig type, load/save, schema migration, onboarding state |
-| `extensions/voice/onboarding.ts` | ~160 | Setup wizard — Deepgram key entry, scope selection |
+| `extensions/voice.ts` | ~2000 | Main: SoX recording, Deepgram WebSocket, pre-recording, tail recording, hold-to-talk state machine, voice commands, waveform widget, sound feedback, double-escape, typing cooldown, session corruption guard, first-run hint, `/voice` commands |
+| `extensions/voice/config.ts` | ~167 | VoiceConfig type, load/save, schema migration, onboarding state |
+| `extensions/voice/onboarding.ts` | ~163 | Setup wizard — Deepgram key entry, scope selection |
 | `extensions/voice/deepgram.ts` | ~30 | WebSocket URL builder, API key resolver |
-| `extensions/voice/text-processing.ts` | ~100 | Voice command detection, punctuation shortcuts |
+| `extensions/voice/text-processing.ts` | ~99 | Voice command detection, punctuation shortcuts |
 
 ---
 
@@ -83,11 +86,14 @@ Gap-based. Counts rapid presses to confirm hold (REPEAT_CONFIRM_COUNT=3). Gap = 
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
-| `HOLD_THRESHOLD_MS` | 800 | Min hold before recording activates |
+| `HOLD_THRESHOLD_MS` | 1200 | Min hold before recording activates |
 | `TAIL_RECORDING_MS` | 1500 | Keep recording after space release |
 | `RELEASE_DETECT_MS` | 500 | Gap that means "released" (non-Kitty) |
-| `REPEAT_CONFIRM_COUNT` | 3 | Rapid presses to confirm hold |
-| `RECORDING_GRACE_MS` | 600 | Ignore release right after recording starts |
+| `REPEAT_CONFIRM_COUNT` | 6 | Rapid presses to confirm hold |
+| `REPEAT_CONFIRM_MS` | 700 | Max gap between presses to count as rapid repeat |
+| `RECORDING_GRACE_MS` | 800 | Ignore release right after recording starts |
+| `TYPING_COOLDOWN_MS` | 400 | Ignore space holds within this window of typing |
+| `CORRUPTION_GUARD_MS` | 200 | Min gap between stop and restart |
 | `MAX_RECORDING_SECS` | 120 | Auto-stop safety cap |
 
 ---
@@ -109,7 +115,7 @@ Gap-based. Counts rapid presses to confirm hold (REPEAT_CONFIRM_COUNT=3). Gap = 
 
 | Key | Action |
 |-----|--------|
-| `SPACE` (hold ≥800ms) | Record with pre-recording + tail recording |
+| `SPACE` (hold ≥1.2s) | Record with pre-recording + tail recording |
 | `Ctrl+Shift+V` | Toggle recording |
 | `Escape` × 2 | Clear editor |
 

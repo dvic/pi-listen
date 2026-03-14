@@ -32,9 +32,7 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 ### Prerequisites
 
-- **Node.js** ≥ 22 (for TypeScript and tests)
 - **Bun** ≥ 1.0 (package manager and test runner)
-- **Python** ≥ 3.10 (for daemon and transcription engine)
 - **SoX** (for microphone recording: `brew install sox`)
 
 ### Install Dependencies
@@ -48,7 +46,7 @@ bun install
 ### Verify Setup
 
 ```bash
-bun run check    # typecheck + test + Python compile
+bun run check    # typecheck + test
 ```
 
 ## Project Structure
@@ -56,22 +54,15 @@ bun run check    # typecheck + test + Python compile
 ```
 pi-listen/
 ├── extensions/
-│   ├── voice.ts              # Main extension entry point
+│   ├── voice.ts              # Main extension — state machine, recording, UI
 │   └── voice/
-│       ├── config.ts          # Configuration management
-│       ├── diagnostics.ts     # Environment scanning
-│       ├── install.ts         # Provisioning plans
-│       └── onboarding.ts      # First-run wizard
+│       ├── config.ts          # Config loading, saving, migration
+│       ├── deepgram.ts        # Deepgram URL builder, API key resolver
+│       ├── onboarding.ts      # First-run setup wizard
+│       └── text-processing.ts # Voice command detection, punctuation shortcuts
 ├── tests/                     # Test suites (Bun test runner)
-├── docs/                      # Documentation
-│   ├── backends.md            # Backend comparison
-│   ├── troubleshooting.md     # Troubleshooting guide
-│   └── plans/                 # Internal planning docs
-├── scripts/                   # Bootstrap scripts
-│   ├── setup-macos.sh         # macOS zero-touch setup
-│   └── setup-windows.ps1     # Windows zero-touch setup
-├── daemon.py                  # Persistent STT daemon
-├── transcribe.py              # Multi-backend transcription
+├── docs/
+│   └── troubleshooting.md     # Troubleshooting guide
 ├── package.json               # Package manifest
 └── tsconfig.json              # TypeScript config
 ```
@@ -103,7 +94,7 @@ refactor: extract socket path generation to config module
 ### Run All Tests
 
 ```bash
-bun run test           # 37 tests across 8 files
+bun run test
 ```
 
 ### Run Specific Tests
@@ -116,7 +107,7 @@ bun test tests/config.test.ts  # Specific file
 ### Full Verification
 
 ```bash
-bun run check  # typecheck + test + Python compile
+bun run check  # typecheck + test
 ```
 
 ### Test Guidelines
@@ -140,7 +131,6 @@ bun run check  # typecheck + test + Python compile
 
 - [ ] Tests pass (`bun run check`)
 - [ ] No TypeScript errors (`bun run typecheck`)
-- [ ] Python files compile (`python3 -m py_compile daemon.py transcribe.py`)
 - [ ] CHANGELOG.md updated
 - [ ] Documentation updated (if applicable)
 - [ ] No secrets or tokens in code
@@ -155,19 +145,10 @@ bun run check  # typecheck + test + Python compile
 - Handle errors explicitly — no empty `catch {}` blocks (except cleanup)
 - Use `node:` prefix for Node.js built-in imports
 
-### Python
-
-- Follow PEP 8
-- Use type hints for function signatures
-- Use `f-strings` for string formatting
-- Handle exceptions explicitly — log errors, don't swallow them
-- Keep daemon responses JSON-serializable
-
 ### General
 
 - No hardcoded secrets or API keys
 - No telemetry or analytics
-- Prefer local processing over cloud by default
 - Keep error messages user-friendly
 
 ## Reporting Issues
@@ -177,12 +158,11 @@ bun run check  # typecheck + test + Python compile
 Please include:
 
 1. **Pi version** (`pi --version`)
-2. **pi-listen version** (`npm list @codexstar/pi-listen`)
+2. **pi-listen version** (check in Pi or `bun pm ls @codexstar/pi-listen`)
 3. **OS and architecture** (e.g., macOS 15.2, Apple Silicon)
-4. **STT backend** (e.g., faster-whisper, deepgram)
-5. **Steps to reproduce**
-6. **Expected vs actual behavior**
-7. **Output of `/voice test`** and `/voice doctor`
+4. **Steps to reproduce**
+5. **Expected vs actual behavior**
+6. **Output of `/voice test`**
 
 ### Feature Requests
 

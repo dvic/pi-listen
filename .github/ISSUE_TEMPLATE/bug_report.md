@@ -14,10 +14,8 @@ A clear and concise description of what the bug is.
 
 - **OS:** (e.g., macOS 15.2 Apple Silicon, Ubuntu 24.04, Windows 11)
 - **Pi version:** (run `pi --version`)
-- **pi-listen version:** (run `npm list pi-listen`)
-- **STT backend:** (e.g., faster-whisper, deepgram)
-- **Node.js version:** (run `node --version`)
-- **Python version:** (run `python3 --version`)
+- **pi-listen version:** (check `/voice info` inside Pi)
+- **Terminal:** (e.g., Ghostty, Kitty, macOS Terminal, WezTerm)
 
 ## To Reproduce
 
@@ -43,7 +41,7 @@ Please include the output of:
 ```
 
 ```
-/voice doctor
+/voice info
 ```
 
 ## Additional Context

@@ -10,12 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Pre-recording** — audio capture starts during warmup countdown, never miss the first word
 - **Tail recording** — keeps recording 1.5s after release so your last word isn't clipped
-- **Reactive waveform** — audio-level-driven animation with fast attack / slow decay, 12-bar center-emphasis display
-- **Deepgram API key validation** — `/voice test` validates key against live API
-- **First-run welcome hint** — shows Deepgram signup link and setup instructions on first launch
-- **Auto-activation** — if `DEEPGRAM_API_KEY` is set, voice activates without running setup
-- **Double-escape editor clear** — press Escape twice within 500ms to clear text
-- **Kitty escape guard** — filters release/repeat events for cross-platform reliability
+- **Reactive waveform** — audio-level-driven 12-bar animation with fast attack / slow decay and center emphasis
+- **Typing cooldown** — space holds within 400ms of other keypresses are ignored, preventing false activation mid-sentence
+- **Sound feedback** — macOS system sounds (Tink, Pop, Basso) for recording start, stop, and error
+- **Session corruption guard** — overlapping recording requests abort the stale session first
+- **Recording history** — `/voice history` shows recent transcriptions with timestamps and durations
+- **Stale session watchdog** — aborts if Deepgram sends no response after 15s of audio
+- **Connection timeout** — aborts if Deepgram WebSocket doesn't open within 10s
+
+### Changed
+- Hold threshold increased to 1200ms (from 800ms) for more deliberate activation
+- Repeat confirm count increased to 6 (from 3) for more reliable non-Kitty hold detection
+- Recording grace period increased to 800ms (from 600ms) to reduce false stops
 
 ## [3.0.2] - 2026-03-14
 
@@ -30,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Complete rewrite** — Deepgram streaming-only architecture (removed local daemon, 5-backend system, BTW side conversations)
 - **Separated Pompom companion** — creature animation now ships as its own extension (`@codexstar/pi-pompom`)
-- **Renamed package** — `@codexstar/pi-listen` → `@codexstar/pi-voice`
+- **Renamed package** — `@codexstar/pi-voice` → `@codexstar/pi-listen`
 
 ### Added
 - **Double-escape editor clear** — press Escape twice within 500ms to clear the editor text
@@ -48,4 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - VAD pre-filtering
 - Pompom/Lumo creature companion (now separate package)
 
+[3.1.3]: https://github.com/codexstar69/pi-listen/releases/tag/v3.1.3
+[3.0.2]: https://github.com/codexstar69/pi-listen/releases/tag/v3.0.2
 [3.0.0]: https://github.com/codexstar69/pi-listen/releases/tag/v3.0.0

@@ -4,8 +4,8 @@
 
 | Version | Supported          |
 |---------|--------------------|
-| 1.0.x   | ✅ Active support   |
-| < 1.0   | ❌ Not supported    |
+| 3.x     | ✅ Active support   |
+| < 3.0   | ❌ Not supported    |
 
 ## Reporting a Vulnerability
 
@@ -33,10 +33,10 @@ The following are **in scope** for security reports:
 
 | Area | Examples |
 |------|----------|
-| Daemon socket | Unauthorized command execution, information disclosure |
-| Audio handling | Path traversal in audio file paths, temp file races |
+| Audio handling | Temp file races, audio data leakage |
 | Config files | Credential exposure, unsafe deserialization |
-| Subprocess spawning | Command injection via backend/model parameters |
+| Subprocess spawning | Command injection via SoX arguments |
+| WebSocket streaming | Data integrity, connection hijacking |
 | Dependencies | Known CVEs in direct dependencies |
 
 The following are **out of scope:**
@@ -44,42 +44,40 @@ The following are **out of scope:**
 | Area | Reason |
 |------|--------|
 | Deepgram API key exposure | User-managed credential, documented in setup |
-| Local Unix socket permissions | OS-level configuration, not application code |
-| Denial of service via large audio files | Local-only, self-inflicted |
-| AI/LLM prompt injection in BTW | BTW conversations are user-initiated |
+| Denial of service via long recordings | Local-only, self-inflicted (120s auto-stop cap) |
 
 ## Security Design Principles
 
 pi-listen follows these security principles:
 
-### 1. Local-First Processing
-Audio is processed locally by default. Cloud backends (Deepgram) are opt-in and clearly labeled during onboarding.
+### 1. Cloud STT
+Audio is streamed to Deepgram for transcription via encrypted WebSocket (wss://). No audio is stored locally or on the server after transcription.
 
 ### 2. No Telemetry
 pi-listen does not collect, transmit, or store any usage data, analytics, or telemetry.
 
 ### 3. Minimal Attack Surface
-- Unix domain sockets (not TCP — no network exposure)
-- Daemon auto-shuts down after 5 minutes of inactivity
 - No persistent storage of audio recordings
-- Temp files are immediately deleted after transcription
+- No network listeners (audio streams outbound only)
+- SoX subprocess captures audio ephemerally (no temp files)
+- Recording auto-stops after 120 seconds
 
 ### 4. Defense in Depth
-- Socket message size limit (1 MB) prevents buffer exhaustion
+- API key resolved from environment variable or config, never logged or included in error messages
 - Error responses do not expose stack traces or internal paths
-- Backend names are validated before use
-- Audio file paths are validated before transcription
+- Connection timeout (10s) and stale session watchdog (15s) prevent hung resources
+- Session corruption guard prevents overlapping recording sessions
 
 ### 5. Principle of Least Privilege
-- Daemon runs as the current user (no root required)
-- No network listeners (Unix socket only)
-- No filesystem access beyond temp directory and config files
+- Runs as the current user (no root required)
+- No filesystem access beyond config files (~/.pi/agent/settings.json)
+- Audio data flows only to Deepgram API (wss://api.deepgram.com)
 
 ## Recent Security Audit
 
-**Date:** 2026-03-12  
-**Method:** Adversarial bug-hunter pipeline (Recon → Hunter → Skeptic → Referee)  
-**Scope:** Full codebase (7 source files, 2948 lines)  
+**Date:** 2026-03-12 (pre-v3 codebase -- daemon and local backends have since been removed)
+**Method:** Adversarial bug-hunter pipeline (Recon → Hunter → Skeptic → Referee)
+**Scope:** Full codebase at time of audit (7 source files, 2948 lines)
 **Results:**
 
 | Metric | Count |
@@ -90,4 +88,4 @@ pi-listen does not collect, transmit, or store any usage data, analytics, or tel
 | Fixed | 6 |
 | Remaining (low severity) | 2 |
 
-See `.bug-hunter/report.md` for the full audit report.
+See `.bug-hunter/report.md` for the full audit report. Note: the v3 rewrite removed the daemon, local backends, and Unix socket -- the primary attack surface identified in that audit no longer exists.

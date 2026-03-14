@@ -7,6 +7,7 @@
 **Hold-to-talk voice input for [Pi](https://github.com/mariozechner/pi-coding-agent).**
 
 [![npm version](https://img.shields.io/npm/v/@codexstar/pi-listen.svg)](https://www.npmjs.com/package/@codexstar/pi-listen)
+[![npm downloads](https://img.shields.io/npm/dm/@codexstar/pi-listen.svg)](https://www.npmjs.com/package/@codexstar/pi-listen)
 [![license](https://img.shields.io/npm/l/@codexstar/pi-listen.svg)](https://github.com/codexstar69/pi-listen/blob/main/LICENSE)
 
 ---
@@ -54,7 +55,7 @@ If `DEEPGRAM_API_KEY` is set, voice auto-activates with a keybinding guide. Othe
 
 | Action | Key | Notes |
 |--------|-----|-------|
-| **Record to editor** | Hold `SPACE` (≥800ms) | Release to finalize. Pre-records during warmup so you don't miss words. |
+| **Record to editor** | Hold `SPACE` (≥1.2s) | Release to finalize. Pre-records during warmup so you don't miss words. |
 | **Toggle recording** | `Ctrl+Shift+V` | Works in all terminals — press to start, press again to stop. |
 | **Clear editor** | `Escape` × 2 | Double-tap within 500ms to clear all text. |
 
@@ -108,6 +109,9 @@ Say these during recording — detected and executed automatically:
 | **Zero-config start** | Auto-activates if `DEEPGRAM_API_KEY` is set — no wizard needed |
 | **First-run hint** | Shows setup instructions with Deepgram signup link on first launch |
 | **API key validation** | `/voice test` validates your key against the live Deepgram API |
+| **Typing cooldown** | Space holds within 400ms of typing are ignored — voice never fires mid-sentence |
+| **Sound feedback** | macOS system sounds for start, stop, and error events |
+| **Session corruption guard** | Overlapping recording requests abort the stale session first |
 | **Cross-platform** | macOS, Windows, Linux — Kitty protocol + non-Kitty fallback |
 
 ---
@@ -116,7 +120,7 @@ Say these during recording — detected and executed automatically:
 
 ```
 Hold SPACE → warmup countdown (pre-recording starts)
-                ↓ (≥800ms)
+                ↓ (≥1.2s)
          SoX captures PCM audio
                 ↓
          Streams to Deepgram Nova 3 via WebSocket
@@ -134,7 +138,7 @@ True key-down/repeat/release events. First press enters warmup immediately. Rele
 **Non-Kitty** (macOS Terminal, older terminals):
 Gap-based detection. Counts rapid key-repeat events to confirm hold. Gap in repeats = released.
 
-Both modes: ≥800ms hold to activate. Quick taps type a normal space.
+Both modes: ≥1.2s hold to activate. Quick taps type a normal space.
 
 ### Architecture
 

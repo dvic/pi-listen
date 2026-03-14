@@ -25,4 +25,4 @@ Add any other context, mockups, or examples about the feature request here.
 ## Checklist
 
 - [ ] I've searched existing issues to confirm this isn't a duplicate
-- [ ] This feature aligns with pi-listen's scope (voice input, STT, side conversations)
+- [ ] This feature aligns with pi-listen's scope (voice input, STT, voice commands)

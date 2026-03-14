@@ -19,7 +19,7 @@
 
 ## Testing
 
-- [ ] `bun run check` passes (typecheck + test + Python compile)
+- [ ] `bun run check` passes (typecheck + test)
 - [ ] New tests added for new functionality
 - [ ] Existing tests still pass
 - [ ] Manual testing performed
@@ -40,4 +40,3 @@
 - [ ] I have updated the CHANGELOG.md
 - [ ] I have updated documentation (if applicable)
 - [ ] No secrets or tokens are included in the code
-- [ ] Python files compile: `python3 -m py_compile daemon.py transcribe.py`

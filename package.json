@@ -11,12 +11,17 @@
     "speech-to-text",
     "stt",
     "deepgram",
+    "nova-3",
     "hold-to-talk",
     "voice-input",
+    "voice-commands",
     "transcription",
     "streaming",
+    "dictation",
+    "waveform",
     "terminal",
-    "cli"
+    "cli",
+    "coding-agent"
   ],
   "author": "codexstar69",
   "license": "MIT",
