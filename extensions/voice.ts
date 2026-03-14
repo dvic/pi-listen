@@ -1707,6 +1707,37 @@ export default function (pi: ExtensionAPI) {
 		if (config.enabled && config.onboarding.completed) {
 			updateVoiceStatus();
 			setupHoldToTalk();
+		} else if (!config.onboarding.completed) {
+			// First-time hint — show once, non-intrusive
+			const hasKey = !!(process.env.DEEPGRAM_API_KEY || config.deepgramApiKey);
+			if (startCtx.hasUI) {
+				if (hasKey) {
+					// Key exists but onboarding not completed — just activate
+					config.onboarding.completed = true;
+					config.onboarding.completedAt = new Date().toISOString();
+					config.onboarding.source = "migration";
+					saveConfig(config, config.scope === "project" ? "project" : "global", currentCwd);
+					updateVoiceStatus();
+					setupHoldToTalk();
+					startCtx.ui.notify([
+						"pi-voice ready!",
+						"",
+						"  Hold SPACE to record → release to transcribe",
+						"  Ctrl+Shift+V to toggle recording",
+						"  Escape × 2 to clear the editor",
+						"  /voice test to verify setup",
+					].join("\n"), "info");
+				} else {
+					startCtx.ui.notify([
+						"pi-voice installed — voice input for Pi",
+						"",
+						"  Hold SPACE to record, release to transcribe.",
+						"  Requires a Deepgram API key ($200 free credit).",
+						"",
+						"  Run /voice setup to get started.",
+					].join("\n"), "info");
+				}
+			}
 		}
 	});
 
