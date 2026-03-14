@@ -1,5 +1,6 @@
 import type { ExtensionCommandContext, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import type { VoiceConfig, VoiceSettingsScope } from "./config";
+import type { VoiceBackend, VoiceConfig, VoiceSettingsScope } from "./config";
+import { LOCAL_MODELS, DEFAULT_LOCAL_MODEL, DEFAULT_LOCAL_ENDPOINT, checkLocalServer } from "./local";
 
 type VoiceUiContext = ExtensionContext | ExtensionCommandContext;
 
@@ -285,72 +286,129 @@ export async function runVoiceOnboarding(
 	options?: { isFirstRun?: boolean },
 ): Promise<OnboardingResult | undefined> {
 	const isFirstRun = options?.isFirstRun ?? !currentConfig.onboarding.completed;
-	const hasDeepgramKey = Boolean(process.env.DEEPGRAM_API_KEY || currentConfig.deepgramApiKey);
 
-	// ─── Deepgram API key setup ──────────────────────────────
-	if (!hasDeepgramKey) {
-		const keyAction = await ctx.ui.select(
-			"Deepgram API key not found. What would you like to do?",
+	// ─── Choose backend ──────────────────────────────────────
+	const backendChoice = await ctx.ui.select(
+		"Choose transcription backend:",
+		[
+			"Deepgram (cloud, real-time streaming, needs API key)",
+			"Local model (offline, no API key, uses whisper.cpp / compatible server)",
+		],
+	);
+	if (!backendChoice) return undefined;
+	const selectedBackend: VoiceBackend = backendChoice.startsWith("Local") ? "local" : "deepgram";
+
+	let localModel = currentConfig.localModel;
+	let localEndpoint = currentConfig.localEndpoint;
+
+	if (selectedBackend === "local") {
+		// ─── Local backend setup ─────────────────────────────
+		const modelOptions = LOCAL_MODELS.map(m => `${m.name} — ${m.size} (${m.notes})`);
+		const modelChoice = await ctx.ui.select("Choose local model:", modelOptions);
+		if (!modelChoice) return undefined;
+		const modelIndex = modelOptions.indexOf(modelChoice);
+		localModel = LOCAL_MODELS[modelIndex]?.id || DEFAULT_LOCAL_MODEL;
+
+		// Ask for server endpoint
+		ctx.ui.notify(
 			[
-				"Paste API key now",
-				"I'll set it up later (ask pi to help or export DEEPGRAM_API_KEY=...)",
-			],
+				"Local transcription requires a server running locally.",
+				"",
+				"Quick start with whisper.cpp:",
+				"  1. Build: git clone https://github.com/ggerganov/whisper.cpp && cd whisper.cpp && make",
+				"  2. Download model: ./models/download-ggml-model.sh small",
+				"  3. Run server: ./build/bin/whisper-server -m models/ggml-small.bin --port 8080",
+				"",
+				"Or use any OpenAI-compatible transcription server.",
+			].join("\n"),
+			"info",
 		);
-		if (!keyAction) return undefined;
 
-		if (keyAction.startsWith("Paste")) {
+		const customEndpoint = await ctx.ui.input(`Server URL (Enter for ${DEFAULT_LOCAL_ENDPOINT})`);
+		if (customEndpoint && customEndpoint.trim()) {
+			localEndpoint = customEndpoint.trim();
+		} else {
+			localEndpoint = DEFAULT_LOCAL_ENDPOINT;
+		}
+
+		// Check if server is reachable
+		const serverCheck = await checkLocalServer(localEndpoint);
+		if (!serverCheck.ok) {
 			ctx.ui.notify(
-				[
-					"Get your free Deepgram API key:",
-					"  → https://dpgr.am/pi-voice",
-					"  (Sign up → $200 free credits, no card needed)",
-					"",
-					"Paste your key below:",
-				].join("\n"),
-				"info",
+				`Server not reachable at ${localEndpoint}\n${serverCheck.error || ""}\nYou can start it later — voice will work once the server is running.`,
+				"warning",
 			);
-			const apiKey = await ctx.ui.input("DEEPGRAM_API_KEY");
-			if (apiKey && apiKey.trim().length > 10) {
-				const trimmedKey = apiKey.trim();
-				const fs = await import("node:fs");
-				const os = await import("node:os");
-				const home = os.homedir();
-				const envSecretsPath = `${home}/.env.secrets`;
-				const zshrcPath = `${home}/.zshrc`;
-				const exportLine = `export DEEPGRAM_API_KEY="${trimmedKey}"`;
+		} else {
+			ctx.ui.notify(`Server detected at ${localEndpoint}`, "info");
+		}
+	} else {
+		// ─── Deepgram backend setup (unchanged logic) ────────
+		const hasDeepgramKey = Boolean(process.env.DEEPGRAM_API_KEY || currentConfig.deepgramApiKey);
 
-				const targetFile = fs.existsSync(envSecretsPath) ? envSecretsPath : zshrcPath;
-				const existing = fs.existsSync(targetFile) ? fs.readFileSync(targetFile, "utf-8") : "";
+		if (!hasDeepgramKey) {
+			const keyAction = await ctx.ui.select(
+				"Deepgram API key not found. What would you like to do?",
+				[
+					"Paste API key now",
+					"I'll set it up later (ask pi to help or export DEEPGRAM_API_KEY=...)",
+				],
+			);
+			if (!keyAction) return undefined;
 
-				if (existing.includes("DEEPGRAM_API_KEY")) {
-					const updated = existing.replace(/^export DEEPGRAM_API_KEY=.*$/m, exportLine);
-					fs.writeFileSync(targetFile, updated);
-				} else {
-					fs.appendFileSync(targetFile, `\n${exportLine}\n`);
-				}
-
-				process.env.DEEPGRAM_API_KEY = trimmedKey;
-
+			if (keyAction.startsWith("Paste")) {
 				ctx.ui.notify(
-					`API key saved to ${targetFile}\nActive in this session. New terminals will pick it up automatically.`,
+					[
+						"Get your free Deepgram API key:",
+						"  → https://dpgr.am/pi-voice",
+						"  (Sign up → $200 free credits, no card needed)",
+						"",
+						"Paste your key below:",
+					].join("\n"),
 					"info",
 				);
-			} else if (apiKey !== undefined && apiKey !== null) {
+				const apiKey = await ctx.ui.input("DEEPGRAM_API_KEY");
+				if (apiKey && apiKey.trim().length > 10) {
+					const trimmedKey = apiKey.trim();
+					const fs = await import("node:fs");
+					const os = await import("node:os");
+					const home = os.homedir();
+					const envSecretsPath = `${home}/.env.secrets`;
+					const zshrcPath = `${home}/.zshrc`;
+					const exportLine = `export DEEPGRAM_API_KEY="${trimmedKey}"`;
+
+					const targetFile = fs.existsSync(envSecretsPath) ? envSecretsPath : zshrcPath;
+					const existing = fs.existsSync(targetFile) ? fs.readFileSync(targetFile, "utf-8") : "";
+
+					if (existing.includes("DEEPGRAM_API_KEY")) {
+						const updated = existing.replace(/^export DEEPGRAM_API_KEY=.*$/m, exportLine);
+						fs.writeFileSync(targetFile, updated);
+					} else {
+						fs.appendFileSync(targetFile, `\n${exportLine}\n`);
+					}
+
+					process.env.DEEPGRAM_API_KEY = trimmedKey;
+
+					ctx.ui.notify(
+						`API key saved to ${targetFile}\nActive in this session. New terminals will pick it up automatically.`,
+						"info",
+					);
+				} else if (apiKey !== undefined && apiKey !== null) {
+					ctx.ui.notify(
+						"Key looks too short — skipped. You can set it later:\n  export DEEPGRAM_API_KEY=\"your-key\"",
+						"warning",
+					);
+				}
+			} else {
 				ctx.ui.notify(
-					"Key looks too short — skipped. You can set it later:\n  export DEEPGRAM_API_KEY=\"your-key\"",
-					"warning",
+					[
+						"No problem! When you're ready:",
+						"  1. Get a key → https://dpgr.am/pi-voice ($200 free credits)",
+						"  2. Run: export DEEPGRAM_API_KEY=\"your-key\"",
+						"  3. Or ask pi: \"help me set up my Deepgram API key\"",
+					].join("\n"),
+					"info",
 				);
 			}
-		} else {
-			ctx.ui.notify(
-				[
-					"No problem! When you're ready:",
-					"  1. Get a key → https://dpgr.am/pi-voice ($200 free credits)",
-					"  2. Run: export DEEPGRAM_API_KEY=\"your-key\"",
-					"  3. Or ask pi: \"help me set up my Deepgram API key\"",
-				].join("\n"),
-				"info",
-			);
 		}
 	}
 
@@ -370,11 +428,17 @@ export async function runVoiceOnboarding(
 	if (!scopeChoice) return undefined;
 	const selectedScope: VoiceSettingsScope = scopeChoice.startsWith("Project") ? "project" : "global";
 
+	const backendLabel = selectedBackend === "local"
+		? `Local — ${LOCAL_MODELS.find(m => m.id === localModel)?.name || localModel} at ${localEndpoint}`
+		: "Deepgram Nova-3 (streaming)";
+
 	const summaryLines = [
-		"Backend: Deepgram Nova-3 (streaming)",
+		`Backend: ${backendLabel}`,
 		`Language: ${languageDisplayName(langCode)}${isFirstRun ? "" : " (change with /voice-language)"}`,
 		`Scope: ${selectedScope}`,
-		`API key: ${process.env.DEEPGRAM_API_KEY ? "configured" : "not yet set"}`,
+		...(selectedBackend === "deepgram"
+			? [`API key: ${process.env.DEEPGRAM_API_KEY ? "configured" : "not yet set"}`]
+			: []),
 	];
 
 	const confirm = await ctx.ui.confirm("Confirm voice setup", summaryLines.join("\n"));
@@ -387,6 +451,9 @@ export async function runVoiceOnboarding(
 			...currentConfig,
 			language: langCode,
 			scope: selectedScope,
+			backend: selectedBackend,
+			localModel: selectedBackend === "local" ? localModel : currentConfig.localModel,
+			localEndpoint: selectedBackend === "local" ? localEndpoint : currentConfig.localEndpoint,
 			onboarding: {
 				...currentConfig.onboarding,
 				completed: false,
