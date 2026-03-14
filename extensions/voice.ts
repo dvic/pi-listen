@@ -1690,6 +1690,7 @@ export default function (pi: ExtensionAPI) {
 			// First-time hint — show once, non-intrusive
 			const hasKey = !!resolveDeepgramApiKey(config);
 			if (startCtx.hasUI) {
+				const audioTool = detectAudioCaptureTool();
 				if (hasKey) {
 					// Key exists but onboarding not completed — just activate
 					config.onboarding.completed = true;
@@ -1698,24 +1699,28 @@ export default function (pi: ExtensionAPI) {
 					saveConfig(config, config.scope === "project" ? "project" : "global", currentCwd);
 					updateVoiceStatus();
 					setupHoldToTalk();
-					startCtx.ui.notify([
+					const lines = [
 						"pi-voice ready!",
 						"",
 						"  Hold SPACE to record → release to transcribe",
 						"  Ctrl+Shift+V to toggle recording",
 						"  Escape × 2 to clear the editor",
+						`  Audio: ${audioTool ? `${audioTool.name}` : "NONE — install sox or ffmpeg"}`,
 						"  /voice test to verify setup",
-					].join("\n"), "info");
+					];
+					startCtx.ui.notify(lines.join("\n"), audioTool ? "info" : "warning");
 				} else {
-					startCtx.ui.notify([
+					const lines = [
 						"pi-voice installed — voice input for Pi",
 						"",
 						"  Hold SPACE to record, release to transcribe.",
-						"  Requires a Deepgram API key ($200 free credit).",
 						"",
-						"  1. Get your key → https://dpgr.am/pi-voice",
-						"  2. Run /voice-setup to configure",
-					].join("\n"), "info");
+						"  Setup:",
+						"  1. Get a Deepgram API key → https://dpgr.am/pi-voice ($200 free credit)",
+						`  2. ${audioTool ? `Audio capture: ${audioTool.name} ✓` : "Install sox or ffmpeg (audio capture)"}`,
+						"  3. Run /voice-setup to configure",
+					];
+					startCtx.ui.notify(lines.join("\n"), "info");
 				}
 			}
 		}
