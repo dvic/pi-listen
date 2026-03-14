@@ -1723,7 +1723,8 @@ export default function (pi: ExtensionAPI) {
 						"  Hold SPACE to record, release to transcribe.",
 						"  Requires a Deepgram API key ($200 free credit).",
 						"",
-						"  Run /voice-setup or /voice setup to get started.",
+						"  1. Get your key → https://dpgr.am/pi-voice",
+						"  2. Run /voice-setup to configure",
 					].join("\n"), "info");
 				}
 			}
