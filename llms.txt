@@ -9,10 +9,11 @@ pi-listen adds streaming voice-to-text input to Pi. Hold SPACE to record, releas
 ## Setup
 
 1. `pi install npm:@codexstar/pi-listen` (outside Pi)
-2. `brew install sox` (or apt/choco)
-3. Get key at https://dpgr.am/pi-voice ($200 free credit)
-4. `export DEEPGRAM_API_KEY="your-key"` in ~/.zshrc
-5. Open Pi — auto-activates, or run `/voice-setup`
+2. Get key at https://dpgr.am/pi-voice ($200 free credit)
+3. `export DEEPGRAM_API_KEY="your-key"` in ~/.zshrc
+4. Open Pi — auto-activates, or run `/voice-setup`
+
+Audio capture auto-detects: sox (preferred) → ffmpeg → arecord (Linux). No mandatory install.
 
 ## Documentation
 
@@ -38,8 +39,20 @@ pi-listen adds streaming voice-to-text input to Pi. Hold SPACE to record, releas
 ## Commands
 
 - `/voice-setup` — Interactive setup wizard
-- `/voice test` — Full diagnostics (SoX, mic, API key validation)
+- `/voice test` — Full diagnostics (audio tool, mic, API key validation)
 - `/voice [on|off|dictate|stop|info|history]`
+
+## Voice Commands
+
+Session: "new session", "compact", "fork", "resume", "tree", "reload", "settings"
+Model: "switch model", "next model", "previous model", "switch to X" (direct model name)
+Thinking: "cycle thinking", "more thinking", "show/hide thinking"
+Display: "expand/collapse tools", "show/hide tools"
+Editor: "open editor", "vim", "undo", "clear", "select all", "new line", "submit", "send"
+Control: "stop", "cancel", "abort"
+Dev: "run tests", "run typecheck", "run lint", "build", "install", "format", "commit", "push", "pull", "show log", "git status", "git diff"
+Agent: "hey pi, ..." (sends message), "hey pi, search for X"
+Punctuation: "period", "comma", "question mark", "exclamation mark", "colon", "semicolon", "hash", "at sign", "dollar sign", "ampersand", "percent", "asterisk", "tab", plus parentheses/brackets/braces/slashes
 
 ## Installation
 

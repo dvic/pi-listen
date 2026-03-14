@@ -16,19 +16,21 @@
 
 ## What pi-listen Does
 
-1. **Pre-recording:** Audio capture starts during the warmup countdown — the user never misses the first word.
-2. **Hold-to-talk:** User holds SPACE → SoX streams audio to Deepgram → interim transcripts appear in editor in real time → release to finalize.
-3. **Tail recording:** Recording continues 1.5s after release so the last word isn't clipped.
-4. **Voice commands:** "hey pi, run tests", "undo", "submit" are executed as actions.
-5. **Continuous dictation:** `/voice dictate` for long-form speaking without holding keys.
-6. **Double-escape clear:** Two Escape presses within 500ms clears the editor.
-7. **Zero-config start:** Auto-activates if `DEEPGRAM_API_KEY` is set. First-run hint with signup link if not.
-8. **API validation:** `/voice test` validates SoX, mic capture, and Deepgram key against the live API.
-9. **Reactive waveform:** Audio-level-driven animation with fast attack / slow decay smoothing.
-10. **Typing cooldown:** Space holds within 400ms of other keypresses are ignored — prevents false activation mid-sentence.
-11. **Sound feedback:** macOS system sounds (Tink/Pop/Basso) for start, stop, and error events.
-12. **Session corruption guard:** Overlapping recording requests abort the stale session before starting a new one.
-13. **Cross-platform:** Kitty protocol + non-Kitty gap-based fallback. macOS, Windows, Linux.
+1. **Audio fallback chain:** Tries sox, ffmpeg, arecord in order — works on most systems without extra installs.
+2. **Pre-recording:** Audio capture starts during the warmup countdown — the user never misses the first word.
+3. **Hold-to-talk:** User holds SPACE → audio tool streams to Deepgram → interim transcripts appear in editor in real time → release to finalize.
+4. **Tail recording:** Recording continues 1.5s after release so the last word isn't clipped.
+5. **60+ voice commands:** Session management, model switching, thinking control, display toggles, editor actions, dev commands, agent control — all by voice.
+6. **20 punctuation shortcuts:** "period", "hash", "at sign", "dollar sign", "tab", and 15 more.
+7. **Continuous dictation:** `/voice dictate` for long-form speaking without holding keys.
+8. **Double-escape clear:** Two Escape presses within 500ms clears the editor.
+9. **Zero-config start:** Auto-activates if `DEEPGRAM_API_KEY` is set. First-run hint with signup link if not.
+10. **API validation:** `/voice test` validates audio tool, mic capture, and Deepgram key against the live API.
+11. **Reactive waveform:** Audio-level-driven animation with fast attack / slow decay smoothing.
+12. **Typing cooldown:** Space holds within 400ms of other keypresses are ignored — prevents false activation mid-sentence.
+13. **Sound feedback:** macOS system sounds (Tink/Pop/Basso) for start, stop, and error events.
+14. **Session corruption guard:** Overlapping recording requests abort the stale session before starting a new one.
+15. **Cross-platform:** Kitty protocol + non-Kitty gap-based fallback. macOS, Windows, Linux.
 
 ---
 
@@ -36,12 +38,13 @@
 
 ```
 Pi CLI (Node.js)
-  └── extensions/voice.ts (~2000 lines)
+  └── extensions/voice.ts (~2128 lines)
         ├── extensions/voice/config.ts (~167 lines)
         ├── extensions/voice/onboarding.ts (~163 lines)
         ├── extensions/voice/deepgram.ts (~30 lines)
-        └── extensions/voice/text-processing.ts (~99 lines)
+        └── extensions/voice/text-processing.ts (~184 lines)
         │
+        │ Audio capture (sox → ffmpeg → arecord fallback)
         │ WebSocket (streaming PCM audio)
         ▼
   Deepgram Nova 3 API (cloud STT)
@@ -74,11 +77,11 @@ Gap-based. Counts rapid presses to confirm hold (REPEAT_CONFIRM_COUNT=6). Gap > 
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `extensions/voice.ts` | ~2000 | Main: SoX recording, Deepgram WebSocket, pre-recording, tail recording, hold-to-talk state machine, voice commands, waveform widget, sound feedback, double-escape, typing cooldown, session corruption guard, first-run hint, `/voice` commands |
+| `extensions/voice.ts` | ~2128 | Main: audio fallback chain, Deepgram WebSocket, pre-recording, tail recording, hold-to-talk state machine, 60+ voice commands, waveform widget, sound feedback, double-escape, typing cooldown, session corruption guard, first-run hint, `/voice` commands |
 | `extensions/voice/config.ts` | ~167 | VoiceConfig type, load/save, schema migration, onboarding state |
 | `extensions/voice/onboarding.ts` | ~163 | Setup wizard — Deepgram key entry, scope selection |
 | `extensions/voice/deepgram.ts` | ~30 | WebSocket URL builder, API key resolver |
-| `extensions/voice/text-processing.ts` | ~99 | Voice command detection, punctuation shortcuts |
+| `extensions/voice/text-processing.ts` | ~184 | Voice command detection (session, model, thinking, display, editor, dev, control), 20 punctuation/symbol shortcuts |
 
 ---
 
@@ -103,7 +106,7 @@ Gap-based. Counts rapid presses to confirm hold (REPEAT_CONFIRM_COUNT=6). Gap > 
 | Command | Description |
 |---------|-------------|
 | `/voice-setup` | Interactive setup wizard |
-| `/voice test` | Full diagnostics — SoX, mic, API key validation |
+| `/voice test` | Full diagnostics — audio tool, mic, API key validation |
 | `/voice` | Toggle on/off |
 | `/voice on` / `off` | Enable / disable |
 | `/voice dictate` | Continuous dictation |
@@ -121,14 +124,82 @@ Gap-based. Counts rapid presses to confirm hold (REPEAT_CONFIRM_COUNT=6). Gap > 
 
 ## Voice Commands
 
+### Session management
 | Trigger | Action |
 |---------|--------|
-| "hey pi, run tests" | Inserts `bun run test` |
-| "hey pi, ..." | Sends message to agent |
-| "undo" | Removes last word |
-| "clear" | Clears editor |
-| "submit" / "send it" | Submits |
-| "new line" / "period" / "comma" | Inserts character |
+| "new session" / "start over" / "fresh session" / "new chat" | `/new` |
+| "compact" / "compress" / "compress context" | `/compact` |
+| "fork" / "fork session" | `/fork` |
+| "resume" / "resume session" | `/resume` |
+| "tree" / "show tree" / "session tree" | `/tree` |
+| "reload" / "reload extensions" | `/reload` |
+| "settings" / "open settings" | `/settings` |
+
+### Model and thinking
+| Trigger | Action |
+|---------|--------|
+| "switch model" / "change model" / "select model" / "pick model" | `/model` (picker) |
+| "next model" / "cycle model" | Cycle model forward |
+| "previous model" | Cycle model backward |
+| "switch to X" / "change to X" | `/model X` (direct name) |
+| "more thinking" / "cycle thinking" / "thinking level" | `/thinking` (cycle level) |
+| "show thinking" / "hide thinking" / "toggle thinking" | Toggle thinking visibility |
+
+### Display
+| Trigger | Action |
+|---------|--------|
+| "expand tools" / "show tools" | Expand tool call display |
+| "collapse tools" / "hide tools" | Collapse tool call display |
+
+### Editor
+| Trigger | Action |
+|---------|--------|
+| "open editor" / "external editor" / "vim" | `/editor` |
+| "undo" / "undo that" | Remove last word |
+| "clear" / "clear all" | Clear editor |
+| "select all" | Select all |
+| "new line" | Insert newline |
+| "submit" / "send" / "send it" | Submit editor content |
+
+### Control
+| Trigger | Action |
+|---------|--------|
+| "stop" / "cancel" / "abort" | Interrupt agent |
+| "hey pi, ..." | Send message to agent |
+| "hey pi, search for X" | Search for X |
+
+### Dev commands
+| Trigger | Action |
+|---------|--------|
+| "run tests" / "run all tests" | `bun run test` |
+| "run typecheck" / "type check" | `bun run typecheck` |
+| "run lint" / "lint this" | `bun run lint` |
+| "build" / "run build" / "build this" | `bun run build` |
+| "install" / "install packages" / "install dependencies" | `bun install` |
+| "format" / "format this" | `bun run format` |
+| "commit" / "commit this" | `git add -A && git commit` |
+| "push" / "git push" / "push this" | `git push` |
+| "pull" / "git pull" | `git pull` |
+| "show log" / "git log" | `git log --oneline -20` |
+| "git status" | `git status` |
+| "git diff" | `git diff` |
+
+### Punctuation and symbol shortcuts
+| Trigger | Inserts |
+|---------|---------|
+| "period" / "comma" / "question mark" / "exclamation mark" | `. , ? !` |
+| "colon" / "semicolon" | `: ;` |
+| "open/close parenthesis" | `( )` |
+| "open/close bracket" | `[ ]` |
+| "open/close brace" | `{ }` |
+| "backslash" / "forward slash" | `\ /` |
+| "hash" | `#` |
+| "at sign" | `@` |
+| "dollar sign" | `$` |
+| "ampersand" | `&` |
+| "percent" | `%` |
+| "asterisk" | `*` |
+| "tab" | Tab character |
 
 ---
 
@@ -157,8 +228,9 @@ interface VoiceConfig {
 
 ```bash
 pi install npm:@codexstar/pi-listen   # Install extension
-brew install sox                               # Microphone capture
 export DEEPGRAM_API_KEY="your-key"            # https://dpgr.am/pi-voice
+# Audio capture auto-detected: sox → ffmpeg → arecord (Linux)
+# Install one if needed: brew install sox  OR  brew install ffmpeg
 ```
 
 ## Development

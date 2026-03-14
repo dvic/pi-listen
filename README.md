@@ -21,15 +21,7 @@
 pi install npm:@codexstar/pi-listen
 ```
 
-### 2. Install SoX (microphone capture)
-
-```bash
-brew install sox          # macOS
-sudo apt install sox      # Ubuntu/Debian
-choco install sox         # Windows
-```
-
-### 3. Get a Deepgram API key
+### 2. Get a Deepgram API key
 
 Sign up at [dpgr.am/pi-voice](https://dpgr.am/pi-voice) — $200 free credit, no card needed.
 
@@ -37,14 +29,26 @@ Sign up at [dpgr.am/pi-voice](https://dpgr.am/pi-voice) — $200 free credit, no
 export DEEPGRAM_API_KEY="your-key-here"    # add to ~/.zshrc or ~/.bashrc
 ```
 
-### 4. Open Pi
+### 3. Open Pi
 
 If `DEEPGRAM_API_KEY` is set, voice auto-activates with a keybinding guide. Otherwise run `/voice-setup` inside Pi to paste your key interactively.
+
+### Audio capture
+
+pi-listen auto-detects your audio capture tool. No manual install needed on most systems.
+
+| Priority | Tool | Platforms | Install |
+|----------|------|-----------|---------|
+| 1 | **SoX** (`rec`) | macOS, Linux, Windows | `brew install sox` / `apt install sox` / `choco install sox` |
+| 2 | **ffmpeg** | macOS, Linux, Windows | `brew install ffmpeg` / `apt install ffmpeg` |
+| 3 | **arecord** | Linux only | Pre-installed (ALSA) |
+
+If none are found, `/voice test` tells you what to install.
 
 ### Verify everything works
 
 ```bash
-/voice test    # Inside Pi — checks SoX, mic, and validates API key
+/voice test    # Inside Pi — checks audio tool, mic, and validates API key
 ```
 
 ---
@@ -71,7 +75,7 @@ If `DEEPGRAM_API_KEY` is set, voice auto-activates with a keybinding guide. Othe
 | Command | Description |
 |---------|-------------|
 | `/voice-setup` | Interactive setup wizard (Deepgram key, scope) |
-| `/voice test` | Full diagnostics — SoX, mic capture, API key validation |
+| `/voice test` | Full diagnostics — audio tool, mic capture, API key validation |
 | `/voice on` / `off` | Enable or disable voice |
 | `/voice dictate` | Continuous dictation (no key hold needed) |
 | `/voice stop` | Stop active recording or dictation |
@@ -83,15 +87,87 @@ If `DEEPGRAM_API_KEY` is set, voice auto-activates with a keybinding guide. Othe
 
 Say these during recording — detected and executed automatically:
 
+#### Session management
+
 | Say this | Does this |
 |----------|-----------|
-| "hey pi, run tests" | Inserts `bun run test` |
-| "hey pi, ..." | Sends any message to the agent |
-| "undo" / "undo that" | Removes last word |
-| "clear" | Clears editor |
-| "submit" / "send it" | Submits editor content |
+| "new session" / "start over" / "fresh session" / "new chat" | Starts a new Pi session (`/new`) |
+| "compact" / "compress" / "compress context" | Compacts context (`/compact`) |
+| "fork" / "fork session" | Forks current session (`/fork`) |
+| "resume" / "resume session" | Resumes a previous session (`/resume`) |
+| "tree" / "show tree" / "session tree" | Shows session tree (`/tree`) |
+| "reload" / "reload extensions" | Reloads extensions (`/reload`) |
+| "settings" / "open settings" | Opens settings (`/settings`) |
+
+#### Model and thinking
+
+| Say this | Does this |
+|----------|-----------|
+| "switch model" / "change model" / "select model" | Opens model picker (`/model`) |
+| "next model" / "cycle model" | Cycles model forward |
+| "previous model" | Cycles model backward |
+| "switch to X" / "change to X" | Switches to model named X (`/model X`) |
+| "more thinking" / "cycle thinking" / "thinking level" | Cycles thinking level (`/thinking`) |
+| "show thinking" / "hide thinking" / "toggle thinking" | Toggles thinking visibility |
+
+#### Display and editor
+
+| Say this | Does this |
+|----------|-----------|
+| "expand tools" / "show tools" | Expands tool call display |
+| "collapse tools" / "hide tools" | Collapses tool call display |
+| "open editor" / "external editor" / "vim" | Opens external editor (`/editor`) |
+| "undo" / "undo that" | Removes last word from editor |
+| "clear" / "clear all" | Clears editor |
+| "select all" | Selects all editor text |
 | "new line" | Inserts newline |
-| "period" / "comma" / "question mark" | Inserts punctuation |
+| "submit" / "send" / "send it" | Submits editor content |
+
+#### Control
+
+| Say this | Does this |
+|----------|-----------|
+| "stop" / "cancel" / "abort" | Interrupts the agent |
+| "hey pi, ..." | Sends any message directly to the agent |
+| "hey pi, search for X" | Searches for X |
+
+#### Dev commands
+
+| Say this | Does this |
+|----------|-----------|
+| "run tests" / "run all tests" | `bun run test` |
+| "run typecheck" / "type check" | `bun run typecheck` |
+| "run lint" / "lint this" | `bun run lint` |
+| "build" / "run build" / "build this" | `bun run build` |
+| "install" / "install packages" / "install dependencies" | `bun install` |
+| "format" / "format this" | `bun run format` |
+| "commit" / "commit this" | `git add -A && git commit` |
+| "push" / "git push" / "push this" | `git push` |
+| "pull" / "git pull" | `git pull` |
+| "show log" / "git log" | `git log --oneline -20` |
+| "git status" | `git status` |
+| "git diff" | `git diff` |
+
+#### Punctuation shortcuts
+
+| Say this | Inserts |
+|----------|---------|
+| "period" | `.` |
+| "comma" | `,` |
+| "question mark" | `?` |
+| "exclamation mark" | `!` |
+| "colon" / "semicolon" | `:` / `;` |
+| "open/close parenthesis" | `(` / `)` |
+| "open/close bracket" | `[` / `]` |
+| "open/close brace" | `{` / `}` |
+| "backslash" / "forward slash" | `\` / `/` |
+| "hash" | `#` |
+| "at sign" | `@` |
+| "dollar sign" | `$` |
+| "ampersand" | `&` |
+| "percent" | `%` |
+| "asterisk" | `*` |
+| "tab" | Tab character |
 
 ---
 
@@ -99,11 +175,13 @@ Say these during recording — detected and executed automatically:
 
 | Feature | Description |
 |---------|-------------|
+| **Audio fallback chain** | Tries sox, ffmpeg, arecord in order — works on most systems without extra installs |
 | **Pre-recording** | Audio capture starts during warmup countdown — you never miss the first word |
 | **Tail recording** | Keeps recording 1.5s after release so your last word isn't clipped |
 | **Live streaming** | Deepgram Nova 3 WebSocket — interim transcripts appear as you speak |
 | **Reactive waveform** | Audio-level-driven animation with fast attack / slow decay |
-| **Voice commands** | "hey pi, run tests", "undo", "submit", punctuation shortcuts |
+| **60+ voice commands** | Session, model, thinking, display, editor, dev, and control commands |
+| **20 punctuation shortcuts** | "period", "hash", "at sign", "dollar sign", "tab", and more |
 | **Continuous dictation** | `/voice dictate` for long-form input without holding keys |
 | **Double-escape clear** | Press Escape twice to clear the editor |
 | **Zero-config start** | Auto-activates if `DEEPGRAM_API_KEY` is set — no wizard needed |
@@ -121,14 +199,24 @@ Say these during recording — detected and executed automatically:
 ```
 Hold SPACE → warmup countdown (pre-recording starts)
                 ↓ (≥1.2s)
-         SoX captures PCM audio
+         Audio capture (sox → ffmpeg → arecord fallback)
                 ↓
-         Streams to Deepgram Nova 3 via WebSocket
+         Streams PCM to Deepgram Nova 3 via WebSocket
                 ↓
          Interim transcripts update editor in real time
                 ↓
 Release SPACE → tail recording (1.5s) → CloseStream → final transcript
 ```
+
+### Audio capture fallback chain
+
+pi-listen tries three audio backends in order and uses the first one found:
+
+1. **SoX** (`rec`) — purpose-built for recording, best quality
+2. **ffmpeg** — widely available, captures from default mic (avfoundation on macOS, pulse on Linux, dshow on Windows)
+3. **arecord** — built into Linux ALSA, zero install needed
+
+The result is cached for the process lifetime. If none are found, you get a clear error with install instructions.
 
 ### Hold detection
 
@@ -177,13 +265,13 @@ Settings in Pi's settings files under the `voice` key:
 
 ## Troubleshooting
 
-Run `/voice test` inside Pi for full diagnostics. It checks SoX, mic capture, and validates your Deepgram API key against the live API.
+Run `/voice test` inside Pi for full diagnostics. It checks your audio capture tool, mic, and validates your Deepgram API key against the live API.
 
 | Problem | Solution |
 |---------|----------|
 | "DEEPGRAM_API_KEY not set" | [Get a key](https://dpgr.am/pi-voice) → `export DEEPGRAM_API_KEY="..."` in `~/.zshrc` |
 | "INVALID KEY" | Check at [console.deepgram.com](https://console.deepgram.com) |
-| "SoX error" / "rec not found" | `brew install sox` / `apt install sox` / `choco install sox` |
+| "No audio capture tool found" | Install one of: `brew install sox`, `brew install ffmpeg`, or use `arecord` (Linux, pre-installed) |
 | Space doesn't activate voice | Run `/voice info` — voice may be disabled or onboarding incomplete |
 | Voice triggers in fuzzy search | Typing cooldown should prevent this — try `Ctrl+Shift+V` instead |
 

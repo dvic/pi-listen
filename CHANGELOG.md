@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.1] - 2026-03-14
+
+### Added
+- **External editor voice command** — say "open editor", "external editor", or "vim" to launch `/editor`
+
+## [3.3.0] - 2026-03-14
+
+### Added
+- **Session management commands** — "new session", "compact", "fork", "resume", "tree", "reload", "settings" trigger their `/slash` equivalents
+- **Model switching commands** — "switch model", "next model", "previous model", "change to X" for model picker and direct selection
+- **Thinking commands** — "cycle thinking", "more thinking", "thinking level" to cycle levels; "show/hide/toggle thinking" for visibility
+- **Display commands** — "expand/collapse/show/hide tools" for tool call display
+- **Editor commands** — "select all", "clear all" variants
+- **Control commands** — "stop", "cancel", "abort" to interrupt the agent
+- **Dev commands** — "build", "install", "format", "push", "pull", "show log", "git status", "git diff"
+- **7 new punctuation shortcuts** — "hash" (`#`), "at sign" (`@`), "dollar sign" (`$`), "ampersand" (`&`), "percent" (`%`), "asterisk" (`*`), "tab"
+
+## [3.2.0] - 2026-03-14
+
+### Changed
+- **Audio capture fallback chain** — no longer requires SoX. Tries `rec` (SoX) → `ffmpeg` → `arecord` (Linux ALSA) in order, uses the first available tool
+- ffmpeg uses avfoundation on macOS, pulse on Linux, dshow on Windows
+- arecord available as zero-install option on Linux (built into ALSA)
+- Audio tool detection result is cached for the process lifetime
+
 ## [3.1.3] - 2026-03-14
 
 ### Added
@@ -54,6 +79,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - VAD pre-filtering
 - Pompom/Lumo creature companion (now separate package)
 
+[3.3.1]: https://github.com/codexstar69/pi-listen/releases/tag/v3.3.1
+[3.3.0]: https://github.com/codexstar69/pi-listen/releases/tag/v3.3.0
+[3.2.0]: https://github.com/codexstar69/pi-listen/releases/tag/v3.2.0
 [3.1.3]: https://github.com/codexstar69/pi-listen/releases/tag/v3.1.3
 [3.0.2]: https://github.com/codexstar69/pi-listen/releases/tag/v3.0.2
 [3.0.0]: https://github.com/codexstar69/pi-listen/releases/tag/v3.0.0
