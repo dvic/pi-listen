@@ -33,8 +33,8 @@ let sherpaModule: any = null;
 let sherpaInitialized = false;
 let sherpaError: string | null = null;
 
-/** Cached recognizer for the currently loaded model */
-let cachedRecognizer: { modelId: string; recognizer: SherpaRecognizer } | null = null;
+/** Cached recognizer for the currently loaded model + language */
+let cachedRecognizer: { modelId: string; language: string; recognizer: SherpaRecognizer } | null = null;
 
 // ─── Initialization ──────────────────────────────────────────────────────────
 
@@ -42,8 +42,8 @@ let cachedRecognizer: { modelId: string; recognizer: SherpaRecognizer } | null =
  * Initialize the sherpa-onnx module.
  * Must be called once before any transcription.
  *
- * Sets LD_LIBRARY_PATH/DYLD_LIBRARY_PATH to find native binaries,
- * then loads the sherpa-onnx-node module.
+ * Checks platform compatibility (ARM32, musl) then loads
+ * the sherpa-onnx-node module.
  *
  * Returns true if initialization succeeded.
  */
@@ -52,16 +52,25 @@ export async function initSherpa(): Promise<boolean> {
 	if (sherpaError) return false;
 
 	try {
-		// Find the platform-specific native binary directory
-		const platformPkgDir = findNativePkgDir();
-		if (platformPkgDir) {
-			// Set library path so the native module can find its shared libs
-			if (process.platform === "darwin") {
-				process.env.DYLD_LIBRARY_PATH = `${platformPkgDir}:${process.env.DYLD_LIBRARY_PATH || ""}`;
-			} else {
-				process.env.LD_LIBRARY_PATH = `${platformPkgDir}:${process.env.LD_LIBRARY_PATH || ""}`;
+		// Early platform checks — fail fast with clear messages
+		if (process.arch === "arm") {
+			throw new Error("ARM32 (armv7l) is not supported by sherpa-onnx-node. Use 64-bit OS or the Deepgram cloud backend.");
+		}
+		if (process.platform === "linux") {
+			try {
+				const ldd = fs.readFileSync("/usr/bin/ldd", "utf-8");
+				if (ldd.includes("musl")) {
+					throw new Error("Alpine Linux (musl libc) is not supported by sherpa-onnx-node. Use a glibc-based distribution or the Deepgram cloud backend.");
+				}
+			} catch (e: any) {
+				if (e?.message?.includes("musl")) throw e;
+				// /usr/bin/ldd not readable — not Alpine, continue
 			}
 		}
+
+		// Note: LD_LIBRARY_PATH/DYLD_LIBRARY_PATH set at runtime have no effect on dlopen().
+		// The native .node binary uses $ORIGIN/@loader_path to find sibling .so/.dylib files,
+		// so library resolution works without env var manipulation.
 
 		sherpaModule = await import("sherpa-onnx-node");
 		sherpaInitialized = true;
@@ -92,15 +101,18 @@ export function isSherpaAvailable(): boolean {
 export function getOrCreateRecognizer(model: LocalModelInfo, modelDir: string, language: string): SherpaRecognizer {
 	if (!sherpaModule) throw new Error("sherpa-onnx not initialized. Call initSherpa() first.");
 
-	if (cachedRecognizer && cachedRecognizer.modelId === model.id) {
+	// Strip regional suffix for local models (e.g. "pt-BR" → "pt")
+	const baseLang = language.split("-")[0] || language;
+
+	if (cachedRecognizer && cachedRecognizer.modelId === model.id && cachedRecognizer.language === baseLang) {
 		return cachedRecognizer.recognizer;
 	}
 
 	// Destroy previous recognizer
 	clearRecognizerCache();
 
-	const recognizer = createRecognizer(model, modelDir, language);
-	cachedRecognizer = { modelId: model.id, recognizer };
+	const recognizer = createRecognizer(model, modelDir, baseLang);
+	cachedRecognizer = { modelId: model.id, language: baseLang, recognizer };
 	return recognizer;
 }
 
@@ -122,17 +134,19 @@ export function clearRecognizerCache(): void {
  * @param recognizer - sherpa OfflineRecognizer instance
  * @returns Transcribed text
  */
-export function transcribeBuffer(pcmData: Buffer, recognizer: SherpaRecognizer): string {
+export async function transcribeBuffer(pcmData: Buffer, recognizer: SherpaRecognizer): Promise<string> {
 	if (!sherpaModule) throw new Error("sherpa-onnx not initialized");
 
 	// Convert 16-bit PCM to Float32Array (sherpa expects float samples in [-1, 1])
 	const samples = pcmToFloat32(pcmData);
 
-	// Create a stream, accept waveform, decode
+	// Create a stream, accept waveform, decode asynchronously
 	// API: stream.acceptWaveform({sampleRate, samples}) — verified from official examples
+	// decodeAsync runs inference on ONNX Runtime's background thread pool (N-API AsyncWorker),
+	// keeping the event loop free for UI updates during the 5-15s decode
 	const stream = recognizer.createStream();
 	stream.acceptWaveform({ sampleRate: 16000, samples });
-	recognizer.decode(stream);
+	await recognizer.decodeAsync(stream);
 
 	const result = recognizer.getResult(stream);
 	return (result?.text || "").trim();
@@ -279,12 +293,16 @@ function createTransducerRecognizer(model: LocalModelInfo, modelDir: string): Sh
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Convert 16-bit signed LE PCM buffer to Float32Array. */
+/** Convert 16-bit signed LE PCM buffer to Float32Array.
+ * Uses Int16Array typed view for ~5-10x speedup over per-sample readInt16LE.
+ * Safe on all sherpa-onnx platforms (x86/ARM LE). Respects Buffer.byteOffset for pooled buffers.
+ */
 function pcmToFloat32(pcm: Buffer): Float32Array {
 	const numSamples = pcm.length / 2;
 	const float32 = new Float32Array(numSamples);
+	const int16 = new Int16Array(pcm.buffer, pcm.byteOffset, numSamples);
 	for (let i = 0; i < numSamples; i++) {
-		float32[i] = pcm.readInt16LE(i * 2) / 32768.0;
+		float32[i] = int16[i]! / 32768.0;
 	}
 	return float32;
 }
@@ -297,35 +315,3 @@ function getNumThreads(): number {
 	return Math.min(4, cpus - 2);
 }
 
-/** Find the sherpa-onnx platform-specific native binary directory. */
-function findNativePkgDir(): string | null {
-	const platformMap: Record<string, string> = {
-		"linux-x64": "sherpa-onnx-linux-x64",
-		"linux-arm64": "sherpa-onnx-linux-arm64",
-		"darwin-x64": "sherpa-onnx-darwin-x64",
-		"darwin-arm64": "sherpa-onnx-darwin-arm64",
-		"win32-x64": "sherpa-onnx-win-x64",
-	};
-
-	const key = `${process.platform}-${process.arch}`;
-	const pkgName = platformMap[key];
-	if (!pkgName) return null;
-
-	// Try to resolve the platform package
-	try {
-		const pkgPath = require.resolve(`${pkgName}/package.json`);
-		return path.dirname(pkgPath);
-	} catch {
-		// Try relative to sherpa-onnx-node
-		try {
-			const mainPkg = require.resolve("sherpa-onnx-node/package.json");
-			const nodeModules = path.resolve(path.dirname(mainPkg), "..");
-			const platformDir = path.join(nodeModules, pkgName);
-			if (fs.existsSync(platformDir)) return platformDir;
-		} catch {
-			// Not installed
-		}
-	}
-
-	return null;
-}

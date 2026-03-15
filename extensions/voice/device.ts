@@ -236,6 +236,7 @@ function getAvailableRamMB(): number {
 function detectContainer(): boolean {
 	try {
 		if (fs.existsSync("/.dockerenv")) return true;
+		if (fs.existsSync("/run/.containerenv")) return true; // Podman
 		const cgroup = fs.readFileSync("/proc/1/cgroup", "utf-8");
 		if (cgroup.includes("docker") || cgroup.includes("kubepods") || cgroup.includes("containerd")) return true;
 		// cgroup v2: check /proc/self/mountinfo for container indicators
@@ -262,13 +263,18 @@ function getContainerRamMB(hostRamMB: number): number {
 	for (const p of paths) {
 		try {
 			const raw = fs.readFileSync(p, "utf-8").trim();
-			// "max" = cgroup v2 unlimited, LLONG_MAX variants = cgroup v1 unlimited
-		// Kernel sometimes returns page-aligned 9223372036854771712 instead of exact LLONG_MAX
-		if (raw === "max" || raw === "9223372036854775807" || raw === "9223372036854771712") continue;
+			// "max" = cgroup v2 unlimited
+		if (raw === "max") continue;
+			// cgroup v1 unlimited: LLONG_MAX or page-aligned variants (64-bit and 32-bit)
+			// Use string comparison to avoid parseInt precision loss on values > MAX_SAFE_INTEGER
+			if (raw === "9223372036854775807" || raw === "9223372036854771712") continue;
 			const bytes = parseInt(raw, 10);
-			if (Number.isFinite(bytes) && bytes > 0) {
-				return Math.min(Math.round(bytes / (1024 * 1024)), hostRamMB);
-			}
+			if (!Number.isFinite(bytes) || bytes <= 0) continue;
+			// Heuristic: if cgroup value exceeds host RAM, treat as unlimited
+			// Catches 32-bit sentinels (~2 GB) and any non-standard page-aligned variants
+			const mb = Math.round(bytes / (1024 * 1024));
+			if (mb >= hostRamMB) continue;
+			return mb;
 		} catch {
 			// File not accessible
 		}
@@ -326,12 +332,17 @@ function detectGPU(platform: NodeJS.Platform, arch: string): DeviceProfile["gpu"
 		result.hasMetal = true;
 	}
 
-	// NVIDIA — try nvidia-smi (5s timeout)
+	// NVIDIA — skip expensive nvidia-smi if no GPU device file exists (Linux)
+	if (platform === "linux" && !fs.existsSync("/dev/nvidia0")) {
+		return result;
+	}
+
+	// NVIDIA — try nvidia-smi (2s timeout)
 	try {
 		const nv = spawnSync("nvidia-smi", [
 			"--query-gpu=name,memory.total",
 			"--format=csv,noheader,nounits",
-		], { timeout: 5000, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] });
+		], { timeout: 2000, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] });
 
 		if (nv.status === 0 && nv.stdout) {
 			const line = nv.stdout.trim().split("\n")[0];

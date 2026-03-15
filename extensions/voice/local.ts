@@ -140,7 +140,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	{
 		id: "whisper-medium", name: "Whisper Medium", size: "~946 MB", sizeBytes: 991_952_896, runtimeRamMB: 2365,
-		notes: "Better accuracy, moderate speed, 57 languages", langSupport: "whisper", tier: "heavy",
+		notes: "Better accuracy, moderate speed, 57 languages", langSupport: "whisper", tier: "standard",
 		sherpaModel: {
 			type: "whisper",
 			files: { encoder: "medium-encoder.int8.onnx", decoder: "medium-decoder.int8.onnx", tokens: "medium-tokens.txt" },
@@ -285,7 +285,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	// ── SenseVoice (Alibaba/FunAudioLLM) — 5 languages ───────────────────
 	{
 		id: "sensevoice-small", name: "SenseVoice Small", size: "~228 MB", sizeBytes: 239_075_328, runtimeRamMB: 570,
-		notes: "5 languages (zh/en/ja/ko/yue), ultra-fast batch", langSupport: "sensevoice", tier: "standard",
+		notes: "5 languages (zh/en/ja/ko/yue), ultra-fast batch", langSupport: "sensevoice", tier: "edge",
 		sherpaModel: {
 			type: "sense_voice",
 			files: { model: "model.int8.onnx", tokens: "tokens.txt" },
@@ -298,7 +298,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	// ── GigaAM v3 (Sber/Salute) — Russian only, NeMo CTC ────────────────
 	{
 		id: "gigaam-v3", name: "GigaAM v3", size: "~225 MB", sizeBytes: 235_929_600, runtimeRamMB: 560,
-		notes: "Russian only, 50% lower WER than Whisper on Russian", langSupport: "russian-only", tier: "standard",
+		notes: "Russian only, 50% lower WER than Whisper on Russian", langSupport: "russian-only", tier: "edge",
 		sherpaModel: {
 			type: "nemo_ctc",
 			files: { model: "model.int8.onnx", tokens: "tokens.txt" },
@@ -660,7 +660,7 @@ export function startLocalSession(
 	recProcess.stdout?.on("data", (chunk: Buffer) => {
 		if (!session.closed) {
 			session.hadAudioData = true;
-			session.audioChunks.push(Buffer.from(chunk));
+			session.audioChunks.push(chunk);
 		}
 	});
 
@@ -694,7 +694,12 @@ export async function stopLocalSession(session: LocalSession, config: VoiceConfi
 	// Wait briefly for any remaining audio data
 	await new Promise((r) => setTimeout(r, 200));
 
+	// Recheck after await — abort may have fired during the 200ms wait
+	if (session.closed) return;
+
 	const pcmData = Buffer.concat(session.audioChunks);
+	// Free individual chunk references during transcription
+	session.audioChunks.length = 0;
 
 	if (pcmData.length === 0) {
 		session.closed = true;
@@ -710,13 +715,22 @@ export async function stopLocalSession(session: LocalSession, config: VoiceConfi
 			const wavBuffer = createWavBuffer(pcmData);
 			text = await transcribeWithServer(wavBuffer, config);
 		} else {
-			// In-process via sherpa-onnx (default)
-			text = await transcribeInProcess(pcmData, config);
+			// In-process via sherpa-onnx (default, 120s timeout)
+			text = await Promise.race([
+				transcribeInProcess(pcmData, config),
+				new Promise<never>((_, reject) =>
+					setTimeout(() => reject(new Error("Transcription timed out (120s)")), 120_000),
+				),
+			]);
 		}
+
+		// Recheck after await — abort may have fired during transcription
+		if (session.closed) return;
 
 		session.closed = true;
 		session.onDone(text, { hadAudio: true, hadSpeech: text.trim().length > 0 });
 	} catch (err: any) {
+		if (session.closed) return;
 		session.closed = true;
 		session.onError(`Local transcription failed: ${err.message || err}`);
 	}

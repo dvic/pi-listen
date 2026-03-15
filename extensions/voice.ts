@@ -187,6 +187,24 @@ function commandExists(cmd: string): boolean {
 	return result;
 }
 
+/** Detect the first Windows DirectShow audio input device name via ffmpeg.
+ * DirectShow has no "default" alias — must enumerate and pick the first audio device.
+ */
+function detectWindowsAudioDevice(): string | null {
+	try {
+		const result = spawnSync("ffmpeg", ["-f", "dshow", "-list_devices", "true", "-i", "dummy"], {
+			timeout: 3000, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"],
+		});
+		// ffmpeg outputs device list to stderr
+		const output = result.stderr || "";
+		// Match lines like: [dshow @ ...] "Microphone (Realtek HD Audio)" (audio)
+		const match = output.match(/"([^"]+)"\s*\(audio\)/);
+		return match?.[1] || null;
+	} catch {
+		return null;
+	}
+}
+
 interface AudioCaptureTool { name: string; cmd: string; args: string[]; }
 
 // Try available audio capture tools in order of preference
@@ -217,12 +235,22 @@ function detectAudioCaptureTool(): AudioCaptureTool | null {
 	if (commandExists("ffmpeg")) {
 		const isLinux = process.platform === "linux";
 		const isMac = process.platform === "darwin";
+		const isWin = process.platform === "win32";
 		// Input device varies by platform
-		const inputArgs = isMac
-			? ["-f", "avfoundation", "-i", ":default"]
-			: isLinux
-				? ["-f", "pulse", "-i", "default"]
-				: ["-f", "dshow", "-i", "audio=default"];
+		let inputArgs: string[];
+		if (isMac) {
+			inputArgs = ["-f", "avfoundation", "-i", ":default"];
+		} else if (isLinux) {
+			inputArgs = ["-f", "pulse", "-i", "default"];
+		} else if (isWin) {
+			// DirectShow has no "default" alias — enumerate devices and pick the first audio device
+			const dshowDevice = detectWindowsAudioDevice();
+			inputArgs = dshowDevice
+				? ["-f", "dshow", "-i", `audio=${dshowDevice}`]
+				: ["-f", "dshow", "-i", "audio=Microphone"]; // last-resort guess
+		} else {
+			inputArgs = ["-f", "pulse", "-i", "default"]; // fallback for other platforms
+		}
 		_cachedAudioTool = {
 			name: "ffmpeg",
 			cmd: "ffmpeg",
@@ -1792,6 +1820,11 @@ export default function (pi: ExtensionAPI) {
 	pi.on("session_switch", async (_event, switchCtx) => {
 		// Clean up any active recording before switching
 		voiceCleanup();
+		// Clear cached recognizer — new project may use different model/language
+		try {
+			const { clearRecognizerCache } = await import("./voice/sherpa-engine");
+			clearRecognizerCache();
+		} catch {}
 		ctx = switchCtx;
 		currentCwd = switchCtx.cwd;
 		const loaded = loadConfigWithSource(switchCtx.cwd);
@@ -1958,7 +1991,14 @@ export default function (pi: ExtensionAPI) {
 					} else if (tool.name === "ffmpeg") {
 						const isMac = process.platform === "darwin";
 						const isLinux = process.platform === "linux";
-						const inputArgs = isMac ? ["-f", "avfoundation", "-i", ":default"] : isLinux ? ["-f", "pulse", "-i", "default"] : ["-f", "dshow", "-i", "audio=default"];
+						let testInputArgs: string[];
+						if (isMac) testInputArgs = ["-f", "avfoundation", "-i", ":default"];
+						else if (isLinux) testInputArgs = ["-f", "pulse", "-i", "default"];
+						else {
+							const dshowDev = detectWindowsAudioDevice();
+							testInputArgs = dshowDev ? ["-f", "dshow", "-i", `audio=${dshowDev}`] : ["-f", "dshow", "-i", "audio=Microphone"];
+						}
+						const inputArgs = testInputArgs;
 						testProc = spawn("ffmpeg", [...inputArgs, "-t", "1", "-ar", "16000", "-ac", "1", "-y", "-loglevel", "error", testFile], { stdio: "pipe" });
 					} else {
 						testProc = spawn("arecord", ["-q", "-f", "S16_LE", "-r", "16000", "-c", "1", "-d", "1", testFile], { stdio: "pipe" });
@@ -1981,13 +2021,27 @@ export default function (pi: ExtensionAPI) {
 					lines.push("    mic capture:       skipped (no audio tool)");
 				}
 
-				if (isLocal) {
-					// Local server connectivity check
+				if (isLocal && config.localEndpoint) {
+					// External local server connectivity check
 					const serverCheck = await checkLocalServer(config.localEndpoint);
 					if (serverCheck.ok) {
 						lines.push("    local server:      OK (reachable)");
 					} else {
 						lines.push(`    local server:      NOT REACHABLE — ${serverCheck.error || "connection refused"}`);
+					}
+				} else if (isLocal) {
+					// In-process sherpa-onnx mode — check module availability
+					try {
+						const { initSherpa, isSherpaAvailable } = await import("./voice/sherpa-engine");
+						if (!isSherpaAvailable()) await initSherpa();
+						const { isSherpaAvailable: checkAgain, getSherpaError } = await import("./voice/sherpa-engine");
+						if (checkAgain()) {
+							lines.push("    sherpa-onnx:       OK (in-process mode)");
+						} else {
+							lines.push(`    sherpa-onnx:       NOT AVAILABLE — ${getSherpaError() || "unknown"}`);
+						}
+					} catch (e: any) {
+						lines.push(`    sherpa-onnx:       NOT AVAILABLE — ${e?.message || e}`);
 					}
 				} else if (dgKey) {
 					// Deepgram API key validation
@@ -2013,7 +2067,7 @@ export default function (pi: ExtensionAPI) {
 				// Summary
 				lines.push("");
 				let ready: boolean;
-				if (isLocal) {
+				if (isLocal && config.localEndpoint) {
 					const serverOk = (await checkLocalServer(config.localEndpoint)).ok;
 					ready = !!tool && serverOk;
 					if (!tool) {
@@ -2026,6 +2080,17 @@ export default function (pi: ExtensionAPI) {
 						lines.push("    Or any OpenAI-compatible transcription server");
 					} else {
 						lines.push("  All checks passed — voice is ready!");
+						lines.push("  Hold SPACE to record, or use Ctrl+Shift+V to toggle.");
+					}
+				} else if (isLocal) {
+					// In-process sherpa-onnx mode — no server needed
+					ready = !!tool;
+					if (!tool) {
+						lines.push("  Setup needed — install any one of:");
+						lines.push("    brew install sox       # macOS (recommended)");
+						lines.push("    apt install sox        # Linux");
+					} else {
+						lines.push("  All checks passed — voice is ready (in-process sherpa-onnx)!");
 						lines.push("  Hold SPACE to record, or use Ctrl+Shift+V to toggle.");
 					}
 				} else {
@@ -2187,6 +2252,8 @@ export default function (pi: ExtensionAPI) {
 				config.language = direct;
 				saveConfig(config, config.scope === "project" ? "project" : "global", currentCwd);
 				if (isLocal) {
+					// Clear cached recognizer so it's rebuilt with the new language
+					try { const { clearRecognizerCache } = await import("./voice/sherpa-engine"); clearRecognizerCache(); } catch {}
 					cmdCtx.ui.notify(`Language: ${localLanguageDisplayName(direct)}\nModel: ${localModelId}`, "info");
 				} else {
 					const model = modelForLanguage(direct);
@@ -2208,6 +2275,8 @@ export default function (pi: ExtensionAPI) {
 				if (langCode) {
 					config.language = langCode;
 					saveConfig(config, config.scope === "project" ? "project" : "global", currentCwd);
+					// Clear cached recognizer so it's rebuilt with the new language
+					try { const { clearRecognizerCache } = await import("./voice/sherpa-engine"); clearRecognizerCache(); } catch {}
 					cmdCtx.ui.notify(`Language: ${localLanguageDisplayName(langCode)}\nModel: ${localModelId}`, "info");
 				}
 			} else {

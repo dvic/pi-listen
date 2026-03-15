@@ -155,6 +155,13 @@ export async function downloadModel(
 			throw new Error(`Download failed: HTTP ${resp.status} for ${filename}`);
 		}
 
+		// If we requested a Range but server returned 200 (full file), reset to overwrite
+		// to avoid appending the full content to an existing partial file
+		if (startByte > 0 && resp.status === 200) {
+			overallDownloaded -= startByte; // undo the partial credit
+			startByte = 0;
+		}
+
 		const contentLength = parseInt(resp.headers.get("content-length") || "0", 10);
 		const totalFileSize = startByte + contentLength;
 
@@ -169,7 +176,11 @@ export async function downloadModel(
 				const { done, value } = await reader.read();
 				if (done) break;
 
-				writeStream.write(Buffer.from(value));
+				// Write Uint8Array directly (no Buffer.from copy needed)
+				// Handle backpressure to avoid unbounded memory on slow disks
+				if (!writeStream.write(value)) {
+					await new Promise<void>(resolve => writeStream.once("drain", resolve));
+				}
 				fileDownloaded += value.byteLength;
 				overallDownloaded += value.byteLength;
 
