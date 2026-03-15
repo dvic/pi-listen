@@ -74,7 +74,7 @@ function hf2(repo: string, file: string): string {
 export const LOCAL_MODELS: LocalModelInfo[] = [
 	// ── Moonshine v2 (moonshine-ai) — English only, uses encoder + mergedDecoder ──
 	{
-		id: "moonshine-v2-tiny", name: "Moonshine v2 Tiny", size: "~31 MB", sizeBytes: 32_505_856, runtimeRamMB: 80,
+		id: "moonshine-v2-tiny", name: "Moonshine v2 Tiny", size: "~43 MB", sizeBytes: 45_088_768, runtimeRamMB: 110,
 		notes: "Streaming, ultra-fast, English only", langSupport: "english-only", tier: "edge",
 		sherpaModel: {
 			type: "moonshine",
@@ -88,7 +88,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	// ── Moonshine v1 (Useful Sensors) — English only, uses preprocessor+encoder+uncachedDecoder+cachedDecoder ──
 	{
-		id: "moonshine-tiny", name: "Moonshine Tiny", size: "~60 MB", sizeBytes: 62_914_560, runtimeRamMB: 150,
+		id: "moonshine-tiny", name: "Moonshine Tiny", size: "~124 MB", sizeBytes: 130_023_424, runtimeRamMB: 310,
 		notes: "Ultra-fast, 5x less compute than Whisper, English only", langSupport: "english-only", tier: "edge",
 		sherpaModel: {
 			type: "moonshine",
@@ -103,7 +103,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 		},
 	},
 	{
-		id: "moonshine-base", name: "Moonshine Base", size: "~130 MB", sizeBytes: 136_314_880, runtimeRamMB: 325,
+		id: "moonshine-base", name: "Moonshine Base", size: "~287 MB", sizeBytes: 300_940_288, runtimeRamMB: 720,
 		notes: "Fast and accurate, edge-optimized, English only", langSupport: "english-only", tier: "standard",
 		sherpaModel: {
 			type: "moonshine",
@@ -119,7 +119,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	// ── Whisper (OpenAI) — multilingual, 57 languages ─────────────────────
 	{
-		id: "whisper-small", name: "Whisper Small", size: "~180 MB", sizeBytes: 188_743_680, runtimeRamMB: 450,
+		id: "whisper-small", name: "Whisper Small", size: "~375 MB", sizeBytes: 393_216_000, runtimeRamMB: 940,
 		notes: "Good balance of speed and accuracy, 57 languages", langSupport: "whisper", tier: "standard",
 		sherpaModel: {
 			type: "whisper",
@@ -132,8 +132,8 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 		},
 	},
 	{
-		id: "whisper-medium", name: "Whisper Medium", size: "~500 MB", sizeBytes: 524_288_000, runtimeRamMB: 1250,
-		notes: "Better accuracy, moderate speed, 57 languages", langSupport: "whisper", tier: "standard",
+		id: "whisper-medium", name: "Whisper Medium", size: "~946 MB", sizeBytes: 991_952_896, runtimeRamMB: 2365,
+		notes: "Better accuracy, moderate speed, 57 languages", langSupport: "whisper", tier: "heavy",
 		sherpaModel: {
 			type: "whisper",
 			files: { encoder: "medium-encoder.int8.onnx", decoder: "medium-decoder.int8.onnx", tokens: "medium-tokens.txt" },
@@ -145,7 +145,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 		},
 	},
 	{
-		id: "whisper-turbo", name: "Whisper Turbo", size: "~574 MB", sizeBytes: 601_882_624, runtimeRamMB: 1400,
+		id: "whisper-turbo", name: "Whisper Turbo", size: "~1.0 GB", sizeBytes: 1_087_373_312, runtimeRamMB: 2590,
 		notes: "Fast and accurate, 57 languages", langSupport: "whisper", tier: "heavy",
 		sherpaModel: {
 			type: "whisper",
@@ -158,7 +158,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 		},
 	},
 	{
-		id: "whisper-large", name: "Whisper Large v3", size: "~1.0 GB", sizeBytes: 1_073_741_824, runtimeRamMB: 2500,
+		id: "whisper-large", name: "Whisper Large v3", size: "~1.8 GB", sizeBytes: 1_863_319_552, runtimeRamMB: 4440,
 		notes: "Best accuracy, slowest, 57 languages", langSupport: "whisper", tier: "heavy",
 		sherpaModel: {
 			type: "whisper",
@@ -172,7 +172,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	// ── Moonshine v2 language-specialized (csukuangfj2) — uses encoder+mergedDecoder ──
 	{
-		id: "moonshine-v2-tiny-ja", name: "Moonshine v2 Tiny Japanese", size: "~31 MB", sizeBytes: 32_505_856, runtimeRamMB: 80,
+		id: "moonshine-v2-tiny-ja", name: "Moonshine v2 Tiny Japanese", size: "~69 MB", sizeBytes: 72_351_744, runtimeRamMB: 175,
 		notes: "Japanese-specialized, ultra-fast", langSupport: "single-ja", tier: "edge",
 		sherpaModel: {
 			type: "moonshine",
@@ -185,7 +185,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 		},
 	},
 	{
-		id: "moonshine-v2-tiny-ko", name: "Moonshine v2 Tiny Korean", size: "~31 MB", sizeBytes: 32_505_856, runtimeRamMB: 80,
+		id: "moonshine-v2-tiny-ko", name: "Moonshine v2 Tiny Korean", size: "~69 MB", sizeBytes: 72_351_744, runtimeRamMB: 175,
 		notes: "Korean-specialized, ultra-fast", langSupport: "single-ko", tier: "edge",
 		sherpaModel: {
 			type: "moonshine",
@@ -198,7 +198,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 		},
 	},
 	{
-		id: "moonshine-v2-base-ar", name: "Moonshine v2 Base Arabic", size: "~65 MB", sizeBytes: 68_157_440, runtimeRamMB: 170,
+		id: "moonshine-v2-base-ar", name: "Moonshine v2 Base Arabic", size: "~135 MB", sizeBytes: 141_557_760, runtimeRamMB: 340,
 		notes: "Arabic-specialized", langSupport: "single-ar", tier: "edge",
 		sherpaModel: {
 			type: "moonshine",
@@ -211,7 +211,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 		},
 	},
 	{
-		id: "moonshine-v2-base-zh", name: "Moonshine v2 Base Chinese", size: "~65 MB", sizeBytes: 68_157_440, runtimeRamMB: 170,
+		id: "moonshine-v2-base-zh", name: "Moonshine v2 Base Chinese", size: "~135 MB", sizeBytes: 141_557_760, runtimeRamMB: 340,
 		notes: "Chinese-specialized", langSupport: "single-zh", tier: "edge",
 		sherpaModel: {
 			type: "moonshine",
@@ -224,7 +224,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 		},
 	},
 	{
-		id: "moonshine-v2-base-ja", name: "Moonshine v2 Base Japanese", size: "~65 MB", sizeBytes: 68_157_440, runtimeRamMB: 170,
+		id: "moonshine-v2-base-ja", name: "Moonshine v2 Base Japanese", size: "~135 MB", sizeBytes: 141_557_760, runtimeRamMB: 340,
 		notes: "Japanese-specialized", langSupport: "single-ja", tier: "edge",
 		sherpaModel: {
 			type: "moonshine",
@@ -237,7 +237,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 		},
 	},
 	{
-		id: "moonshine-v2-base-uk", name: "Moonshine v2 Base Ukrainian", size: "~65 MB", sizeBytes: 68_157_440, runtimeRamMB: 170,
+		id: "moonshine-v2-base-uk", name: "Moonshine v2 Base Ukrainian", size: "~135 MB", sizeBytes: 141_557_760, runtimeRamMB: 340,
 		notes: "Ukrainian-specialized", langSupport: "single-uk", tier: "edge",
 		sherpaModel: {
 			type: "moonshine",
@@ -250,7 +250,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 		},
 	},
 	{
-		id: "moonshine-v2-base-vi", name: "Moonshine v2 Base Vietnamese", size: "~65 MB", sizeBytes: 68_157_440, runtimeRamMB: 170,
+		id: "moonshine-v2-base-vi", name: "Moonshine v2 Base Vietnamese", size: "~135 MB", sizeBytes: 141_557_760, runtimeRamMB: 340,
 		notes: "Vietnamese-specialized", langSupport: "single-vi", tier: "edge",
 		sherpaModel: {
 			type: "moonshine",
@@ -263,7 +263,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 		},
 	},
 	{
-		id: "moonshine-v2-base-es", name: "Moonshine v2 Base Spanish", size: "~65 MB", sizeBytes: 68_157_440, runtimeRamMB: 170,
+		id: "moonshine-v2-base-es", name: "Moonshine v2 Base Spanish", size: "~63 MB", sizeBytes: 66_060_288, runtimeRamMB: 160,
 		notes: "Spanish-specialized", langSupport: "single-es", tier: "edge",
 		sherpaModel: {
 			type: "moonshine",
@@ -296,14 +296,14 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 			type: "nemo_ctc",
 			files: { model: "model.int8.onnx", tokens: "tokens.txt" },
 			downloadUrls: {
-				model: hf1("sherpa-onnx-nemo-ctc-giga-am-russian-2024-10-24", "model.int8.onnx"),
-				tokens: hf1("sherpa-onnx-nemo-ctc-giga-am-russian-2024-10-24", "tokens.txt"),
+				model: hf1("sherpa-onnx-nemo-ctc-giga-am-v3-russian-2025-12-16", "model.int8.onnx"),
+				tokens: hf1("sherpa-onnx-nemo-ctc-giga-am-v3-russian-2025-12-16", "tokens.txt"),
 			},
 		},
 	},
 	// ── Parakeet (NVIDIA NeMo) — transducer architecture ─────────────────
 	{
-		id: "parakeet-v2", name: "Parakeet TDT v2", size: "~473 MB", sizeBytes: 495_976_448, runtimeRamMB: 1180,
+		id: "parakeet-v2", name: "Parakeet TDT v2", size: "~661 MB", sizeBytes: 693_109_760, runtimeRamMB: 1650,
 		notes: "English only, NVIDIA NeMo transducer", langSupport: "english-only", tier: "standard",
 		sherpaModel: {
 			type: "transducer",
@@ -317,7 +317,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 		},
 	},
 	{
-		id: "parakeet-v3", name: "Parakeet TDT v3", size: "~478 MB", sizeBytes: 501_219_328, runtimeRamMB: 1195,
+		id: "parakeet-v3", name: "Parakeet TDT v3", size: "~671 MB", sizeBytes: 703_594_496, runtimeRamMB: 1675,
 		notes: "Multilingual, auto language detection, NVIDIA NeMo", langSupport: "parakeet-multi", tier: "standard",
 		sherpaModel: {
 			type: "transducer",
