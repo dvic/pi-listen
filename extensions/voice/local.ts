@@ -39,9 +39,9 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	{ id: "moonshine-tiny", name: "Moonshine Tiny", size: "~60 MB", notes: "Ultra-fast, 5x less compute than Whisper, English only", langSupport: "english-only" },
 	{ id: "moonshine-base", name: "Moonshine Base", size: "~130 MB", notes: "Fast and accurate, edge-optimized, English only", langSupport: "english-only" },
 	// ── Moonshine v2 Streaming — English only, low-latency ────────────────
-	{ id: "moonshine-v2-tiny", name: "Moonshine v2 Tiny", size: "~70 MB", notes: "Streaming, 34M params, 50ms latency, English only", langSupport: "english-only" },
-	{ id: "moonshine-v2-small", name: "Moonshine v2 Small", size: "~250 MB", notes: "Streaming, 123M params, 148ms latency, English only", langSupport: "english-only" },
-	{ id: "moonshine-v2-medium", name: "Moonshine v2 Medium", size: "~490 MB", notes: "Streaming, 245M params, beats Whisper Large v3 WER, English only", langSupport: "english-only" },
+	{ id: "moonshine-v2-tiny", name: "Moonshine v2 Tiny", size: "~31 MB", notes: "Streaming, 34M params, 50ms latency, English only", langSupport: "english-only" },
+	{ id: "moonshine-v2-small", name: "Moonshine v2 Small", size: "~100 MB", notes: "Streaming, 123M params, 148ms latency, English only", langSupport: "english-only" },
+	{ id: "moonshine-v2-medium", name: "Moonshine v2 Medium", size: "~192 MB", notes: "Streaming, 245M params, beats Whisper Large v3 WER, English only", langSupport: "english-only" },
 	// ── Moonshine Flavors — single-language specialized tiny models ────────
 	{ id: "moonshine-tiny-ar", name: "Moonshine Tiny Arabic", size: "~60 MB", notes: "Arabic-specialized, 27M params", langSupport: "single-ar" },
 	{ id: "moonshine-tiny-zh", name: "Moonshine Tiny Chinese", size: "~60 MB", notes: "Chinese-specialized, 27M params", langSupport: "single-zh" },
