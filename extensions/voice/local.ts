@@ -70,6 +70,13 @@ function hf2(repo: string, file: string): string {
  * - SenseVoice (csukuangfj): {model.int8.onnx, tokens.txt}
  * - GigaAM CTC (csukuangfj): {model.int8.onnx, tokens.txt}
  * - Parakeet TDT (csukuangfj): {encoder.int8.onnx, decoder.int8.onnx, joiner.int8.onnx, tokens.txt} — transducer!
+ *
+ * Note on Moonshine v2 Small/Medium:
+ *   These exist ONLY as streaming models (moonshine-ai/moonshine) with a different 5-file
+ *   architecture (encoder.ort, frontend.ort, decoder_kv.ort, cross_kv.ort, adapter.ort)
+ *   that is incompatible with sherpa-onnx's moonshine recognizer (which expects 2-file
+ *   encoder+mergedDecoder or 4-file v1 structure). Only Tiny and Base have non-streaming
+ *   variants compatible with sherpa-onnx. See: https://github.com/moonshine-ai/moonshine
  */
 export const LOCAL_MODELS: LocalModelInfo[] = [
 	// ── Moonshine v2 (moonshine-ai) — English only, uses encoder + mergedDecoder ──
