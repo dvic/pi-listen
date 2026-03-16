@@ -83,17 +83,14 @@ If none are found, `/voice test` tells you what to install.
 
 | Command | Description |
 |---------|-------------|
-| `/voice-setup` | Interactive setup wizard (Deepgram key, scope) |
+| `/voice-settings` | Settings panel — backend, models, language, scope, device info |
+| `/voice-models` | Settings panel (Models tab) — browse, install, manage models |
 | `/voice test` | Full diagnostics — audio tool, mic capture, API key validation |
-| `/voice-language` | Change transcription language (56+ supported, fuzzy picker) |
-| `/voice-settings` | Show current voice config |
 | `/voice on` / `off` | Enable or disable voice |
 | `/voice dictate` | Continuous dictation (no key hold needed) |
 | `/voice stop` | Stop active recording or dictation |
-| `/voice info` | Show current config and status |
 | `/voice history` | Recent transcriptions |
 | `/voice` | Toggle on/off |
-| `/voice-models` | Interactive model manager — tabbed panel with fuzzy search |
 
 ---
 

@@ -1805,7 +1805,7 @@ export default function (pi: ExtensionAPI) {
 						"  Setup:",
 						"  1. Get a Deepgram API key → https://dpgr.am/pi-voice ($200 free credit)",
 						`  2. ${audioTool ? `Audio capture: ${audioTool.name} ✓` : "Install sox or ffmpeg (audio capture)"}`,
-						"  3. Run /voice-setup to configure",
+						"  3. Run /voice-settings to configure",
 					];
 					startCtx.ui.notify(lines.join("\n"), "info");
 				}
@@ -1865,7 +1865,7 @@ export default function (pi: ExtensionAPI) {
 					"  Quick SPACE tap → types a space (no voice)",
 					"  Escape × 2 → clear editor",
 					"",
-					"  /voice-language → change language (56+ supported)",
+					"  /voice-settings → open settings panel",
 					"  /voice dictate  → continuous mode (no hold)",
 					"  /voice test     → verify setup",
 					"",
@@ -2105,7 +2105,7 @@ export default function (pi: ExtensionAPI) {
 						lines.push("  Setup needed:");
 						lines.push("    1. Get a free key → https://dpgr.am/pi-voice ($200 free credit)");
 						lines.push("    2. export DEEPGRAM_API_KEY=\"your-key\" (add to ~/.zshrc)");
-						lines.push("    3. Or run /voice-setup to paste it interactively");
+						lines.push("    3. Or run /voice-settings to configure");
 					} else if (!tool) {
 						lines.push("  Setup needed — install any one of:");
 						lines.push("    brew install sox       # macOS (recommended)");
@@ -2123,95 +2123,14 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 
-			// /voice language — fuzzy search picker
-			if (sub === "language" || sub === "lang") {
-				if (config.backend === "local") {
-					const localModelId = config.localModel || "whisper-small";
-					const { languages, englishOnly } = getLanguagesForLocalModel(localModelId);
-					if (englishOnly) {
-						const modelName = LOCAL_MODELS.find(m => m.id === localModelId)?.name || localModelId;
-						const langName = languages[0]?.name || "English";
-						cmdCtx.ui.notify(`${modelName} only supports ${langName}.`, "warning");
-						return;
-					}
-					const langCode = await pickLanguage(cmdCtx, config.language, languages);
-					if (langCode) {
-						config.language = langCode;
-						saveConfig(config, config.scope === "project" ? "project" : "global", currentCwd);
-						// Clear cached recognizer so it's rebuilt with the new language
-						try { const { clearRecognizerCache } = await import("./voice/sherpa-engine"); clearRecognizerCache(); } catch {}
-						cmdCtx.ui.notify(`Language: ${localLanguageDisplayName(langCode)}\nModel: ${localModelId}`, "info");
-					}
-				} else {
-					const langCode = await pickLanguage(cmdCtx, config.language);
-					if (langCode) {
-						config.language = langCode;
-						saveConfig(config, config.scope === "project" ? "project" : "global", currentCwd);
-						const model = modelForLanguage(langCode);
-						cmdCtx.ui.notify(`Language: ${languageDisplayName(langCode)}\nModel: ${model}`, "info");
-					}
-				}
-				return;
-			}
-			// /voice language <code> — direct set without picker
-			if (sub.startsWith("language ") || sub.startsWith("lang ")) {
-				const langCode = sub.replace(/^lang(uage)?\s+/, "").trim();
-				if (config.backend === "local") {
-					const localModelId = config.localModel || "whisper-small";
-					if (!isLanguageSupportedByModel(localModelId, langCode)) {
-						const modelName = LOCAL_MODELS.find(m => m.id === localModelId)?.name || localModelId;
-						cmdCtx.ui.notify(`"${langCode}" is not supported by ${modelName}.\nUse /voice language to see supported languages.`, "warning");
-						return;
-					}
-				}
-				config.language = langCode;
-				saveConfig(config, config.scope === "project" ? "project" : "global", currentCwd);
-				if (config.backend === "local") {
-					// Clear cached recognizer so it's rebuilt with the new language
-					try { const { clearRecognizerCache } = await import("./voice/sherpa-engine"); clearRecognizerCache(); } catch {}
-					cmdCtx.ui.notify(`Language: ${localLanguageDisplayName(langCode)}\nModel: ${config.localModel || "whisper-small"}`, "info");
-				} else {
-					const model = modelForLanguage(langCode);
-					cmdCtx.ui.notify(`Language: ${languageDisplayName(langCode)}\nModel: ${model}`, "info");
-				}
+			// /voice language, /voice setup, /voice info → open settings panel
+			if (sub === "language" || sub === "lang" || sub.startsWith("language ") || sub.startsWith("lang ")) {
+				await openSettingsPanel(cmdCtx);
 				return;
 			}
 
-			if (sub === "info") {
-				const dgKey = resolveDeepgramApiKey(config);
-				const isLocal = config.backend === "local";
-				const infoLines = [
-					`Voice config:`,
-					`  backend:    ${isLocal ? "local" : "deepgram"}`,
-					`  enabled:    ${config.enabled}`,
-					`  scope:      ${config.scope}`,
-					`  language:   ${config.language}`,
-				];
-				if (isLocal) {
-					infoLines.push(`  model:      ${config.localModel || "whisper-small"}`);
-					infoLines.push(`  endpoint:   ${config.localEndpoint || DEFAULT_LOCAL_ENDPOINT}`);
-					infoLines.push(`  mode:       batch (transcribe after recording)`);
-				} else {
-					infoLines.push(`  streaming:  YES (Deepgram WebSocket)`);
-					infoLines.push(`  api key:    ${dgKey ? "set (" + dgKey.slice(0, 8) + "…)" : "NOT SET"}`);
-				}
-				infoLines.push(
-					`  state:      ${voiceState}`,
-					`  setup:      ${config.onboarding.completed ? `complete (${config.onboarding.source ?? "unknown"})` : "incomplete"}`,
-					`  hold-key:   SPACE (hold ≥${HOLD_THRESHOLD_MS}ms) or Ctrl+Shift+V (toggle)`,
-					`  kitty:      ${kittyReleaseDetected ? "yes" : "no"}`,
-				);
-				cmdCtx.ui.notify(infoLines.join("\n"), "info");
-				return;
-			}
-
-			if (sub === "setup" || sub === "reconfigure") {
-				const result = await runVoiceOnboarding(cmdCtx, config, { isFirstRun: !config.onboarding.completed });
-				if (!result) {
-					cmdCtx.ui.notify("Voice setup cancelled.", "warning");
-					return;
-				}
-				await finalizeAndSaveSetup(cmdCtx, result.config, result.selectedScope, result.summaryLines, "setup-command");
+			if (sub === "info" || sub === "setup" || sub === "reconfigure" || sub === "settings" || sub === "config") {
+				await openSettingsPanel(cmdCtx);
 				return;
 			}
 
@@ -2225,80 +2144,18 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
-	// ─── Dedicated setup command ─────────────────────────────────────────────
+	// ─── /voice-setup → redirects to settings panel ─────────────────────────
 
 	pi.registerCommand("voice-setup", {
-		description: "Configure voice input — Deepgram API key and settings",
-		handler: async (_args, cmdCtx) => {
-			ctx = cmdCtx;
-			const result = await runVoiceOnboarding(cmdCtx, config, { isFirstRun: !config.onboarding.completed });
-			if (!result) {
-				cmdCtx.ui.notify("Voice setup cancelled.", "warning");
-				return;
-			}
-			await finalizeAndSaveSetup(cmdCtx, result.config, result.selectedScope, result.summaryLines, "setup-command");
-		},
+		description: "Open pi-listen settings panel",
+		handler: async (_args, cmdCtx) => openSettingsPanel(cmdCtx),
 	});
 
-	// ─── /voice-language — dedicated language picker ────────────────────────
+	// ─── /voice-language → redirects to settings panel ───────────────────────
 
 	pi.registerCommand("voice-language", {
-		description: "Change voice transcription language",
-		handler: async (args, cmdCtx) => {
-			ctx = cmdCtx;
-			const isLocal = config.backend === "local";
-			const localModelId = config.localModel || "whisper-small";
-
-			// Direct set: /voice-language hi
-			const direct = (args || "").trim().toLowerCase();
-			if (direct) {
-				if (isLocal) {
-					if (!isLanguageSupportedByModel(localModelId, direct)) {
-						const modelName = LOCAL_MODELS.find(m => m.id === localModelId)?.name || localModelId;
-						cmdCtx.ui.notify(`"${direct}" is not supported by ${modelName}.\nUse /voice-language to see supported languages.`, "warning");
-						return;
-					}
-				}
-				config.language = direct;
-				saveConfig(config, config.scope === "project" ? "project" : "global", currentCwd);
-				if (isLocal) {
-					// Clear cached recognizer so it's rebuilt with the new language
-					try { const { clearRecognizerCache } = await import("./voice/sherpa-engine"); clearRecognizerCache(); } catch {}
-					cmdCtx.ui.notify(`Language: ${localLanguageDisplayName(direct)}\nModel: ${localModelId}`, "info");
-				} else {
-					const model = modelForLanguage(direct);
-					cmdCtx.ui.notify(`Language: ${languageDisplayName(direct)}\nModel: ${model}`, "info");
-				}
-				return;
-			}
-
-			// Fuzzy picker — show model-appropriate languages
-			if (isLocal) {
-				const { languages, englishOnly } = getLanguagesForLocalModel(localModelId);
-				if (englishOnly) {
-					const modelName = LOCAL_MODELS.find(m => m.id === localModelId)?.name || localModelId;
-					const langName = languages[0]?.name || "English";
-					cmdCtx.ui.notify(`${modelName} only supports ${langName}.`, "warning");
-					return;
-				}
-				const langCode = await pickLanguage(cmdCtx, config.language, languages);
-				if (langCode) {
-					config.language = langCode;
-					saveConfig(config, config.scope === "project" ? "project" : "global", currentCwd);
-					// Clear cached recognizer so it's rebuilt with the new language
-					try { const { clearRecognizerCache } = await import("./voice/sherpa-engine"); clearRecognizerCache(); } catch {}
-					cmdCtx.ui.notify(`Language: ${localLanguageDisplayName(langCode)}\nModel: ${localModelId}`, "info");
-				}
-			} else {
-				const langCode = await pickLanguage(cmdCtx, config.language);
-				if (langCode) {
-					config.language = langCode;
-					saveConfig(config, config.scope === "project" ? "project" : "global", currentCwd);
-					const model = modelForLanguage(langCode);
-					cmdCtx.ui.notify(`Language: ${languageDisplayName(langCode)}\nModel: ${model}`, "info");
-				}
-			}
-		},
+		description: "Open pi-listen settings to change language",
+		handler: async (_args, cmdCtx) => openSettingsPanel(cmdCtx),
 	});
 
 	// ─── Settings panel (shared handler) ────────────────────────────────────
