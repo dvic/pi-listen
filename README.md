@@ -3,7 +3,7 @@
 # pi-listen
 
 <p align="center">
-  <img src="assets/banner.png" alt="pi-listen — Voice input for the Pi coding agent" width="100%" />
+  <img src="https://raw.githubusercontent.com/codexstar69/pi-listen/main/assets/banner.png" alt="pi-listen — Voice input for the Pi coding agent" width="100%" />
 </p>
 
 **Hold-to-talk voice input for [Pi](https://github.com/mariozechner/pi-coding-agent).** Cloud streaming via Deepgram or fully offline with local models.
@@ -18,7 +18,13 @@
 
 ## See How It Works
 
-<video src="assets/pi-listen.mp4" controls width="100%"></video>
+<p align="center">
+  <a href="https://github.com/codexstar69/pi-listen/blob/main/assets/pi-listen.mp4">
+    <img src="https://raw.githubusercontent.com/codexstar69/pi-listen/main/assets/banner.png" alt="Watch demo video" width="600" />
+  </a>
+  <br>
+  <em>Click to watch the demo video</em>
+</p>
 
 ---
 
@@ -85,25 +91,25 @@ All configuration lives in one place: `/voice-settings`. Four tabs cover everyth
 
 ### General — backend, language, scope
 
-<img src="assets/settings-general.png" alt="General settings — backend, model, language, scope, voice toggle" width="600" />
+<img src="https://raw.githubusercontent.com/codexstar69/pi-listen/main/assets/settings-general.png" alt="General settings — backend, model, language, scope, voice toggle" width="600" />
 
 Toggle between Deepgram (cloud, live streaming) and Local (offline, batch mode). Change language, scope, and enable/disable voice — all with keyboard shortcuts.
 
 ### Models — browse, search, install
 
-<img src="assets/settings-models.png" alt="Models tab — browse 19 models with accuracy/speed ratings" width="600" />
+<img src="https://raw.githubusercontent.com/codexstar69/pi-listen/main/assets/settings-models.png" alt="Models tab — browse 19 models with accuracy/speed ratings" width="600" />
 
 Browse 19 models from Parakeet, Whisper, Moonshine, SenseVoice, and GigaAM. Each model shows accuracy and speed ratings (●●●●○/●●●●○), fitness badges, and download status. Fuzzy search to find models fast. Press Enter to activate and download.
 
 ### Downloaded — manage installed models
 
-<img src="assets/settings-downloaded.png" alt="Downloaded tab — manage installed models, activate or delete" width="600" />
+<img src="https://raw.githubusercontent.com/codexstar69/pi-listen/main/assets/settings-downloaded.png" alt="Downloaded tab — manage installed models, activate or delete" width="600" />
 
 See what's installed, total disk usage, and which model is active. Press Enter to activate, `x` to delete. Models from [Handy](https://github.com/cjpais/handy) are auto-detected and can be imported without re-downloading.
 
 ### Device — hardware profile and dependencies
 
-<img src="assets/settings-device.png" alt="Device tab — hardware profile, dependencies, disk space" width="600" />
+<img src="https://raw.githubusercontent.com/codexstar69/pi-listen/main/assets/settings-device.png" alt="Device tab — hardware profile, dependencies, disk space" width="600" />
 
 See your hardware profile (RAM, CPU, GPU), dependency status (sherpa-onnx runtime), available disk space, and total downloaded models. Model recommendations are based on this profile.
 
