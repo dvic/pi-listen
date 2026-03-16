@@ -164,7 +164,7 @@ See your hardware profile (RAM, CPU, GPU), dependency status (sherpa-onnx runtim
 | **Whisper Medium** | ●●●●○ | ●●●○○ | 946 MB | 57 | Good accuracy, medium speed. |
 | **Whisper Large v3** | ●●●●○ | ●○○○○ | 1.8 GB | 57 | Highest Whisper accuracy. Slow on CPU. |
 
-Plus 10 language-specialized Moonshine v2 variants (Japanese, Korean, Arabic, Chinese, Ukrainian, Vietnamese, Spanish).
+Plus 8 language-specialized Moonshine v2 variants for Japanese, Korean, Arabic, Chinese, Ukrainian, Vietnamese, and Spanish.
 
 ### How local models work
 
