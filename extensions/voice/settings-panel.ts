@@ -14,6 +14,7 @@ import { matchesKey, Key, truncateToWidth } from "@mariozechner/pi-tui";
 import type { VoiceConfig, VoiceSettingsScope } from "./config";
 import { LOCAL_MODELS, getLanguagesForLocalModel, type LocalModelInfo, type LocalLangEntry } from "./local";
 import type { DeviceProfile, ModelFitness } from "./device";
+import { getFreeDiskSpace, formatBytes, getModelsDir } from "./model-download";
 
 // ─── ANSI helpers ─────────────────────────────────────────────────────────────
 
@@ -374,21 +375,39 @@ export class VoiceSettingsPanel {
 			? (device.gpu.gpuName || "NVIDIA")
 			: device.gpu.hasMetal ? "Apple Silicon (Metal)" : "none";
 
-		const rows: [string, string][] = [
+		// Hardware
+		lines.push(dim("    ── Hardware ──"));
+		const hwRows: [string, string][] = [
 			["Platform", `${device.platform} ${device.arch}`],
 			["RAM", `${(device.totalRamMB / 1024).toFixed(1)} GB total, ${(device.freeRamMB / 1024).toFixed(1)} GB free`],
 			["CPU", `${device.cpuCores} cores — ${device.cpuModel}`],
 			["GPU", gpuLabel],
 		];
-		if (device.gpu.vramMB) rows.push(["VRAM", `${device.gpu.vramMB} MB`]);
-		if (device.isRaspberryPi) rows.push(["Raspberry Pi", device.piModel || "yes"]);
-		rows.push(["Container", device.isContainer ? "yes" : "no"]);
-		rows.push(["Locale", device.systemLocale]);
-		rows.push(["sherpa-onnx", this.p.isSherpaAvailable() ? green("available") : yellow("not initialized")]);
+		if (device.gpu.vramMB) hwRows.push(["VRAM", `${device.gpu.vramMB} MB`]);
+		if (device.isRaspberryPi) hwRows.push(["Raspberry Pi", device.piModel || "yes"]);
+		hwRows.push(["Container", device.isContainer ? "yes" : "no"]);
+		hwRows.push(["Locale", device.systemLocale]);
 
-		for (const [label, value] of rows) {
+		for (const [label, value] of hwRows) {
 			lines.push(`    ${label.padEnd(labelW)}${value}`);
 		}
+
+		// Dependencies
+		lines.push("");
+		lines.push(dim("    ── Dependencies ──"));
+		const sherpaOk = this.p.isSherpaAvailable();
+		lines.push(`    ${"sherpa-onnx".padEnd(labelW)}${sherpaOk ? green("ready") : yellow("not initialized — will init on first use")}`);
+
+		// Disk space
+		const freeSpace = getFreeDiskSpace(getModelsDir());
+		const diskLabel = freeSpace !== null ? formatBytes(freeSpace) + " free" : "unknown";
+		const diskWarn = freeSpace !== null && freeSpace < 500 * 1024 * 1024; // <500MB
+		lines.push(`    ${"Disk space".padEnd(labelW)}${diskWarn ? yellow(diskLabel + " (low)") : diskLabel}`);
+
+		// Downloaded models total
+		const downloaded = this.p.getDownloadedModels();
+		const totalMB = downloaded.reduce((sum, d) => sum + d.sizeMB, 0);
+		lines.push(`    ${"Models".padEnd(labelW)}${downloaded.length} downloaded (${totalMB} MB)`);
 
 		lines.push("");
 		lines.push(dim("  ←→ tabs  esc close"));

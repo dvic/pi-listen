@@ -2340,25 +2340,105 @@ export default function (pi: ExtensionAPI) {
 			},
 		);
 
-		// Post-close: handle download action
+		// Post-close: handle download action with full pre-checks + progress
 		if (result?.type === "download" && result.modelId) {
 			const model = LOCAL_MODELS.find(m => m.id === result.modelId);
 			if (model) {
-				cmdCtx.ui.notify(`Downloading ${model.name} (${model.size})…`, "info");
+				const {
+					checkDownloadPrereqs, createProgressTracker, verifyDownload, formatBytes,
+				} = await import("./voice/model-download");
+				const { initSherpa, isSherpaAvailable, getSherpaError } = await import("./voice/sherpa-engine");
+
+				// ── Step 1: Check sherpa-onnx dependency ──
+				if (!isSherpaAvailable()) {
+					cmdCtx.ui.notify("Initializing sherpa-onnx runtime…", "info");
+					const ok = await initSherpa();
+					if (!ok) {
+						cmdCtx.ui.notify(
+							[
+								"sherpa-onnx is required for local models but failed to initialize.",
+								`Error: ${getSherpaError() || "unknown"}`,
+								"",
+								"To fix:",
+								"  1. Ensure sherpa-onnx-node is installed: bun add sherpa-onnx-node",
+								"  2. Check platform compatibility (macOS/Linux x64/arm64)",
+								"  3. Or switch to Deepgram (cloud) backend in /voice-settings",
+							].join("\n"),
+							"error",
+						);
+						return;
+					}
+				}
+
+				// ── Step 2: Pre-download checks (disk, network, permissions) ──
+				cmdCtx.ui.notify(`Checking prerequisites for ${model.name} (${model.size})…`, "info");
+				const preCheck = await checkDownloadPrereqs(model.sherpaModel.downloadUrls, model.sizeBytes);
+				if (!preCheck.ok) {
+					cmdCtx.ui.notify(
+						[
+							`Cannot download ${model.name}:`,
+							"",
+							...preCheck.issues.map(i => `  • ${i}`),
+							"",
+							"Resolve the above and try again via /voice-models.",
+						].join("\n"),
+						"error",
+					);
+					return;
+				}
+
+				// ── Step 3: Download with real-time progress ──
+				const tracker = createProgressTracker(model.name);
+				cmdCtx.ui.notify(`Starting download: ${model.name} (${model.size})…`, "info");
+
 				try {
 					await ensureModelDownloaded(
 						model.id,
 						model.sherpaModel.downloadUrls,
 						model.sizeBytes,
-						(progress) => {
-							const pct = Math.round((progress.downloadedBytes / progress.totalBytes) * 100);
-							cmdCtx.ui.notify(`Downloading ${model.name}… ${pct}% (${progress.file})`, "info");
+						(raw) => {
+							const rich = tracker(raw);
+							if (rich) cmdCtx.ui.notify(rich.line, "info");
 						},
 					);
-					cmdCtx.ui.notify(`${model.name} downloaded and ready.`, "info");
 				} catch (err: any) {
-					cmdCtx.ui.notify(`Download failed: ${err.message || err}`, "error");
+					const msg = err?.message || String(err);
+					const lines = [`Download failed: ${model.name}`];
+					if (msg.includes("timed out") || msg.includes("Timeout")) {
+						lines.push("The download timed out. Check your internet speed and try again.");
+					} else if (msg.includes("ENOSPC") || msg.includes("no space")) {
+						lines.push("Disk is full. Free up space and try again.");
+					} else if (msg.includes("HTTP 4") || msg.includes("HTTP 5")) {
+						lines.push(`Server error: ${msg}`);
+						lines.push("The model server may be temporarily down. Try again in a few minutes.");
+					} else {
+						lines.push(`Error: ${msg}`);
+					}
+					lines.push("", "Partial downloads are auto-resumed on next attempt.");
+					cmdCtx.ui.notify(lines.join("\n"), "error");
+					return;
 				}
+
+				// ── Step 4: Post-download verification ──
+				const verification = verifyDownload(model.id, model.sherpaModel.downloadUrls, model.sizeBytes);
+				if (!verification.ok) {
+					cmdCtx.ui.notify(
+						[
+							`${model.name} downloaded but verification failed:`,
+							"",
+							...verification.issues.map(i => `  • ${i}`),
+							"",
+							"Try: /voice-models → Downloaded tab → delete and re-download.",
+						].join("\n"),
+						"warning",
+					);
+					return;
+				}
+
+				cmdCtx.ui.notify(
+					`${model.name} downloaded and verified (${model.size}). Ready to use.`,
+					"info",
+				);
 			}
 		}
 

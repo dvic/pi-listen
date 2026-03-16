@@ -248,6 +248,239 @@ export async function ensureModelDownloaded(
 	return promise;
 }
 
+// ─── Pre-download checks ─────────────────────────────────────────────────────
+
+export interface PreCheckResult {
+	ok: boolean;
+	issues: string[];
+}
+
+/**
+ * Run all pre-download checks before starting a model download.
+ * Returns a list of issues (empty = all clear).
+ *
+ * Checks:
+ * 1. Disk space (model size + 20% buffer)
+ * 2. Network connectivity (HEAD request to first download URL)
+ * 3. Write permissions on models directory
+ */
+export async function checkDownloadPrereqs(
+	downloadUrls: Record<string, string>,
+	totalSizeBytes: number,
+): Promise<PreCheckResult> {
+	const issues: string[] = [];
+
+	// 1. Disk space
+	const requiredBytes = Math.ceil(totalSizeBytes * 1.2); // 20% buffer for .tmp files
+	const freeBytes = getFreeDiskSpace(getModelsDir());
+	if (freeBytes !== null && freeBytes < requiredBytes) {
+		const freeMB = Math.round(freeBytes / (1024 * 1024));
+		const needMB = Math.round(requiredBytes / (1024 * 1024));
+		issues.push(`Insufficient disk space: ${freeMB} MB free, need ${needMB} MB`);
+	}
+
+	// 2. Write permissions
+	const modelsDir = getModelsDir();
+	try {
+		fs.mkdirSync(modelsDir, { recursive: true });
+		const testFile = path.join(modelsDir, ".write-test");
+		fs.writeFileSync(testFile, "");
+		fs.unlinkSync(testFile);
+	} catch {
+		issues.push(`Cannot write to models directory: ${modelsDir}`);
+	}
+
+	// 3. Network connectivity
+	const firstUrl = Object.values(downloadUrls)[0];
+	if (firstUrl) {
+		try {
+			const resp = await fetch(firstUrl, {
+				method: "HEAD",
+				signal: AbortSignal.timeout(8000),
+				redirect: "follow",
+			});
+			if (!resp.ok && resp.status !== 302 && resp.status !== 301) {
+				issues.push(`Model server returned HTTP ${resp.status} — check URL or try again later`);
+			}
+		} catch (err: any) {
+			if (err?.name === "TimeoutError" || err?.name === "AbortError") {
+				issues.push("Network timeout — check your internet connection");
+			} else if (err?.cause?.code === "ECONNREFUSED" || err?.cause?.code === "ENOTFOUND") {
+				issues.push("Cannot reach model server — check your internet connection");
+			} else {
+				issues.push(`Network error: ${err?.message || err}`);
+			}
+		}
+	}
+
+	return { ok: issues.length === 0, issues };
+}
+
+// ─── Download progress formatting ────────────────────────────────────────────
+
+export interface RichProgress {
+	/** "45%" */
+	percent: number;
+	/** "168 MB / 375 MB" */
+	sizeLabel: string;
+	/** "2.1 MB/s" */
+	speed: string;
+	/** "~1m 30s left" */
+	eta: string;
+	/** Full formatted line */
+	line: string;
+	/** Current file being downloaded */
+	file: string;
+	/** File progress "2/3" */
+	fileProgress: string;
+}
+
+/**
+ * Create a throttled progress formatter that calculates speed and ETA.
+ * Returns a function that accepts raw DownloadProgress and emits RichProgress
+ * at most once per `intervalMs` (default 500ms).
+ */
+export function createProgressTracker(
+	modelName: string,
+	intervalMs = 500,
+): (raw: DownloadProgress) => RichProgress | null {
+	let startTime = 0;
+	let lastEmitTime = 0;
+	// Rolling window for speed calculation (last 5 samples)
+	const samples: { time: number; bytes: number }[] = [];
+
+	return (raw: DownloadProgress): RichProgress | null => {
+		const now = Date.now();
+		if (startTime === 0) startTime = now;
+
+		// Throttle emissions
+		if (now - lastEmitTime < intervalMs && raw.downloadedBytes < raw.totalBytes) {
+			return null;
+		}
+		lastEmitTime = now;
+
+		// Rolling speed (last 5 samples over ~2.5s window)
+		samples.push({ time: now, bytes: raw.downloadedBytes });
+		if (samples.length > 10) samples.shift();
+
+		const oldest = samples[0]!;
+		const elapsed = (now - oldest.time) / 1000;
+		const bytesInWindow = raw.downloadedBytes - oldest.bytes;
+		const speedBps = elapsed > 0 ? bytesInWindow / elapsed : 0;
+
+		const percent = Math.round((raw.downloadedBytes / raw.totalBytes) * 100);
+		const dlMB = (raw.downloadedBytes / (1024 * 1024)).toFixed(0);
+		const totalMB = (raw.totalBytes / (1024 * 1024)).toFixed(0);
+		const speedMB = (speedBps / (1024 * 1024)).toFixed(1);
+
+		const remaining = speedBps > 0 ? (raw.totalBytes - raw.downloadedBytes) / speedBps : 0;
+		let eta: string;
+		if (speedBps === 0 || !Number.isFinite(remaining)) {
+			eta = "calculating…";
+		} else if (remaining > 60) {
+			eta = `~${Math.floor(remaining / 60)}m ${Math.round(remaining % 60)}s left`;
+		} else {
+			eta = `~${Math.round(remaining)}s left`;
+		}
+
+		const sizeLabel = `${dlMB} / ${totalMB} MB`;
+		const speed = `${speedMB} MB/s`;
+		const fileProgress = `${raw.fileIndex + 1}/${raw.totalFiles}`;
+
+		const line = `Downloading ${modelName}… ${percent}% (${sizeLabel}) · ${speed} · ${eta}`;
+
+		return { percent, sizeLabel, speed, eta, line, file: raw.file, fileProgress };
+	};
+}
+
+// ─── Post-download verification ──────────────────────────────────────────────
+
+/**
+ * Verify a downloaded model is complete and usable.
+ * Checks that all expected files exist and have non-zero size.
+ */
+export function verifyDownload(
+	modelId: string,
+	downloadUrls: Record<string, string>,
+	expectedTotalBytes: number,
+): { ok: boolean; issues: string[] } {
+	const issues: string[] = [];
+	const dir = getModelDir(modelId);
+
+	if (!fs.existsSync(dir)) {
+		issues.push(`Model directory not found: ${dir}`);
+		return { ok: false, issues };
+	}
+
+	let totalSize = 0;
+	for (const [role, url] of Object.entries(downloadUrls)) {
+		const filename = fileNameFromUrl(url);
+		const filePath = path.join(dir, filename);
+
+		if (!fs.existsSync(filePath)) {
+			issues.push(`Missing file: ${filename} (${role})`);
+			continue;
+		}
+
+		const stat = fs.statSync(filePath);
+		if (stat.size === 0) {
+			issues.push(`Empty file: ${filename} (${role}) — may be corrupted`);
+			continue;
+		}
+
+		// Check for leftover .tmp files (incomplete download)
+		if (fs.existsSync(filePath + ".tmp")) {
+			issues.push(`Incomplete download detected: ${filename}.tmp — delete and retry`);
+		}
+
+		totalSize += stat.size;
+	}
+
+	// Sanity check: total should be within 10% of expected
+	if (issues.length === 0 && expectedTotalBytes > 0) {
+		const ratio = totalSize / expectedTotalBytes;
+		if (ratio < 0.5) {
+			issues.push(`Download appears incomplete: ${Math.round(totalSize / (1024 * 1024))} MB downloaded, expected ~${Math.round(expectedTotalBytes / (1024 * 1024))} MB`);
+		}
+	}
+
+	return { ok: issues.length === 0, issues };
+}
+
+// ─── Disk space ──────────────────────────────────────────────────────────────
+
+/** Get free disk space in bytes for the given path. Returns null if unavailable. */
+export function getFreeDiskSpace(dirPath: string): number | null {
+	try {
+		// Node 18.15+ / Bun — statfsSync
+		const stats = fs.statfsSync(dirPath);
+		return stats.bavail * stats.bsize;
+	} catch {
+		// statfsSync not available or path doesn't exist yet
+	}
+
+	// Fallback: try parent directory
+	const parent = path.dirname(dirPath);
+	if (parent !== dirPath) {
+		try {
+			const stats = fs.statfsSync(parent);
+			return stats.bavail * stats.bsize;
+		} catch {
+			// Give up
+		}
+	}
+
+	return null;
+}
+
+/** Format bytes as human-readable string. */
+export function formatBytes(bytes: number): string {
+	if (bytes < 1024) return `${bytes} B`;
+	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+	if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
+	return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Extract filename from a URL. */
