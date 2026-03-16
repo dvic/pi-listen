@@ -447,6 +447,124 @@ export function verifyDownload(
 	return { ok: issues.length === 0, issues };
 }
 
+// ─── Handy model import ──────────────────────────────────────────────────────
+
+/** Known Handy model directory (macOS) */
+const HANDY_MODELS_DIR = path.join(
+	os.homedir(), "Library", "Application Support", "com.pais.handy", "models",
+);
+
+/** Map of handy model directory names → pi model IDs + file mappings */
+const HANDY_MODEL_MAP: Record<string, {
+	piModelId: string;
+	/** Map of handy filename → pi expected filename */
+	fileMap: Record<string, string>;
+}> = {
+	"parakeet-tdt-0.6b-v3-int8": {
+		piModelId: "parakeet-v3",
+		fileMap: {
+			"encoder-model.int8.onnx": "encoder.int8.onnx",
+			"decoder_joint-model.int8.onnx": "decoder.int8.onnx",
+			"nemo128.onnx": "joiner.int8.onnx",
+			"vocab.txt": "tokens.txt",
+		},
+	},
+};
+
+export interface HandyModel {
+	handyId: string;
+	piModelId: string;
+	name: string;
+	sizeMB: number;
+	imported: boolean;
+}
+
+/**
+ * Scan Handy's model directory for compatible models that can be imported.
+ * Returns models found in Handy that have a known mapping to pi model format.
+ */
+export function scanHandyModels(): HandyModel[] {
+	if (!fs.existsSync(HANDY_MODELS_DIR)) return [];
+
+	const results: HandyModel[] = [];
+	try {
+		const entries = fs.readdirSync(HANDY_MODELS_DIR, { withFileTypes: true });
+		for (const entry of entries) {
+			if (!entry.isDirectory()) continue;
+			const mapping = HANDY_MODEL_MAP[entry.name];
+			if (!mapping) continue;
+
+			const handyDir = path.join(HANDY_MODELS_DIR, entry.name);
+			const sizeMB = getDirSizeMB(handyDir);
+			const piDir = getModelDir(mapping.piModelId);
+			const imported = fs.existsSync(piDir) && isSymlinkOrComplete(piDir, mapping);
+
+			results.push({
+				handyId: entry.name,
+				piModelId: mapping.piModelId,
+				name: entry.name,
+				sizeMB,
+				imported,
+			});
+		}
+	} catch {
+		// Permission error or directory not accessible
+	}
+	return results;
+}
+
+/**
+ * Import a Handy model by creating symlinks from pi's model directory
+ * to Handy's files with the correct filenames.
+ * Avoids duplicating large model files on disk.
+ */
+export function importHandyModel(handyId: string): { ok: boolean; error?: string } {
+	const mapping = HANDY_MODEL_MAP[handyId];
+	if (!mapping) return { ok: false, error: `Unknown Handy model: ${handyId}` };
+
+	const handyDir = path.join(HANDY_MODELS_DIR, handyId);
+	if (!fs.existsSync(handyDir)) return { ok: false, error: `Handy model not found: ${handyDir}` };
+
+	const piDir = getModelDir(mapping.piModelId);
+	fs.mkdirSync(piDir, { recursive: true });
+
+	for (const [handyFile, piFile] of Object.entries(mapping.fileMap)) {
+		const src = path.join(handyDir, handyFile);
+		const dest = path.join(piDir, piFile);
+
+		if (!fs.existsSync(src)) {
+			return { ok: false, error: `Missing file in Handy: ${handyFile}` };
+		}
+
+		// Skip if already exists (real file or valid symlink)
+		if (fs.existsSync(dest)) continue;
+
+		try {
+			fs.symlinkSync(src, dest);
+		} catch (err: any) {
+			// Symlink failed — try copying instead (e.g., cross-device)
+			try {
+				fs.copyFileSync(src, dest);
+			} catch (copyErr: any) {
+				return { ok: false, error: `Failed to link/copy ${handyFile}: ${copyErr.message}` };
+			}
+		}
+	}
+
+	return { ok: true };
+}
+
+/** Check if a pi model dir has valid symlinks or files for a handy mapping */
+function isSymlinkOrComplete(
+	piDir: string,
+	mapping: { fileMap: Record<string, string> },
+): boolean {
+	for (const piFile of Object.values(mapping.fileMap)) {
+		if (!fs.existsSync(path.join(piDir, piFile))) return false;
+	}
+	return true;
+}
+
 // ─── Disk space ──────────────────────────────────────────────────────────────
 
 /** Get free disk space in bytes for the given path. Returns null if unavailable. */

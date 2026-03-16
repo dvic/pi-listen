@@ -14,7 +14,7 @@ import { matchesKey, Key, truncateToWidth } from "@mariozechner/pi-tui";
 import type { VoiceConfig, VoiceSettingsScope } from "./config";
 import { LOCAL_MODELS, getLanguagesForLocalModel, type LocalModelInfo, type LocalLangEntry } from "./local";
 import type { DeviceProfile, ModelFitness } from "./device";
-import { getFreeDiskSpace, formatBytes, getModelsDir } from "./model-download";
+import { getFreeDiskSpace, formatBytes, getModelsDir, scanHandyModels, importHandyModel } from "./model-download";
 
 // ─── ANSI helpers ─────────────────────────────────────────────────────────────
 
@@ -336,31 +336,51 @@ export class VoiceSettingsPanel {
 		const lines: string[] = [];
 		const dl = this.getDownloaded();
 		const currentId = this.p.config.localModel || "whisper-small";
+		const handy = scanHandyModels();
+		const handyNotImported = handy.filter(h => !h.imported);
 
-		if (dl.length === 0) {
+		if (dl.length === 0 && handyNotImported.length === 0) {
 			lines.push(dim("    No downloaded models yet."));
 			lines.push(dim("    Models download automatically on first recording."));
 			lines.push(dim("    Use the Models tab to browse and install."));
 		} else {
-			let totalMB = 0;
-			for (let i = 0; i < dl.length; i++) {
-				const d = dl[i]!;
-				totalMB += d.sizeMB;
-				const isSelected = i === this.row;
-				const isCurrent = d.id === currentId;
-				const prefix = isSelected ? cyan("  → ") : "    ";
-				const name = isSelected ? cyan(d.name) : d.name;
-				const size = dim(` — ${d.sizeMB} MB`);
-				const status = isCurrent ? green(" ✓ active") : "";
-				lines.push(`${prefix}${name}${size}${status}`);
+			// Pi models
+			if (dl.length > 0) {
+				let totalMB = 0;
+				for (let i = 0; i < dl.length; i++) {
+					const d = dl[i]!;
+					totalMB += d.sizeMB;
+					const isSelected = i === this.row;
+					const isCurrent = d.id === currentId;
+					const prefix = isSelected ? cyan("  → ") : "    ";
+					const name = isSelected ? cyan(d.name) : d.name;
+					const size = dim(` — ${d.sizeMB} MB`);
+					const status = isCurrent ? green(" ● active") : "";
+					lines.push(`${prefix}${name}${size}${status}`);
+				}
+				lines.push(dim(`    Total: ${totalMB} MB on disk`));
 			}
-			lines.push("");
-			lines.push(dim(`    Total: ${totalMB} MB on disk`));
+
+			// Handy models available for import
+			if (handyNotImported.length > 0) {
+				lines.push("");
+				lines.push(dim("    ── Available from Handy ──"));
+				for (let i = 0; i < handyNotImported.length; i++) {
+					const h = handyNotImported[i]!;
+					const idx = dl.length + i;
+					const isSelected = idx === this.row;
+					const prefix = isSelected ? cyan("  → ") : "    ";
+					const name = isSelected ? cyan(h.name) : h.name;
+					const size = dim(` — ${h.sizeMB} MB`);
+					lines.push(`${prefix}${name}${size}${yellow(" ↵ import")}`);
+				}
+			}
 		}
 
 		lines.push("");
-		const hint = dl.length > 0
-			? "  ↵ activate  x delete  ←→ tabs  ↑↓ navigate  esc close"
+		const hasItems = dl.length > 0 || handyNotImported.length > 0;
+		const hint = hasItems
+			? "  ↵ activate/import  x delete  ←→ tabs  ↑↓ navigate  esc close"
 			: "  ←→ tabs  esc close";
 		lines.push(dim(hint));
 		return lines;
@@ -541,8 +561,23 @@ export class VoiceSettingsPanel {
 			}
 		} else if (tabId === "downloaded") {
 			const dl = this.getDownloaded();
-			const item = dl[this.row];
-			if (item) this.activateModel(item.id);
+			if (this.row < dl.length) {
+				// Activate an already-downloaded model
+				const item = dl[this.row];
+				if (item) this.activateModel(item.id);
+			} else {
+				// Import from Handy
+				const handyNotImported = scanHandyModels().filter(h => !h.imported);
+				const handyIdx = this.row - dl.length;
+				const h = handyNotImported[handyIdx];
+				if (h) {
+					const result = importHandyModel(h.handyId);
+					if (result.ok) {
+						this.activateModel(h.piModelId);
+					}
+					// Panel will re-render and show the imported model
+				}
+			}
 		}
 	}
 
@@ -587,7 +622,11 @@ export class VoiceSettingsPanel {
 		switch (tabId) {
 			case "general": return 5;
 			case "models": return this.modelFiltered.length;
-			case "downloaded": return this.getDownloaded().length;
+			case "downloaded": {
+				const dl = this.getDownloaded().length;
+				const handy = scanHandyModels().filter(h => !h.imported).length;
+				return dl + handy;
+			}
 			case "device": return 0;
 		}
 	}
