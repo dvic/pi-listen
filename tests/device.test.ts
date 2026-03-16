@@ -80,10 +80,10 @@ describe("getModelFitness", () => {
 		expect(["recommended", "compatible"]).toContain(fitness);
 	});
 
-	test("model returns warning when runtime exceeds free RAM", () => {
-		// whisper-medium needs ~1250 MB, device has only 800 MB free but 4096 total
+	test("model returns warning when runtime exceeds 60% of total RAM", () => {
+		// whisper-medium needs ~2365 MB runtime, device has 3000 MB total → ratio 0.79 > 0.6
 		const mediumModel = LOCAL_MODELS.find(m => m.id === "whisper-medium")!;
-		const device = mockDevice({ totalRamMB: 4096, freeRamMB: 800 });
+		const device = mockDevice({ totalRamMB: 3000, freeRamMB: 2000 });
 		expect(getModelFitness(mediumModel, device)).toBe("warning");
 	});
 });

@@ -85,24 +85,113 @@ function hf2(repo: string, file: string): string {
  *   variants compatible with sherpa-onnx. See: https://github.com/moonshine-ai/moonshine
  */
 export const LOCAL_MODELS: LocalModelInfo[] = [
-	// ── Moonshine v2 (moonshine-ai) — English only, uses encoder + mergedDecoder ──
+	// ═══════════════════════════════════════════════════════════════════════
+	// TOP PICKS — best overall models, shown first
+	// ═══════════════════════════════════════════════════════════════════════
 	{
-		id: "moonshine-v2-tiny", name: "Moonshine v2 Tiny", size: "~43 MB", sizeBytes: 45_088_768, runtimeRamMB: 110,
-		notes: "Ultra-fast, English only, 34ms latency", langSupport: "english-only", tier: "edge", preferred: true, accuracy: 2, speed: 5,
+		id: "parakeet-v3", name: "Parakeet TDT v3", size: "~671 MB", sizeBytes: 703_594_496, runtimeRamMB: 1675,
+		notes: "Best multilingual — 25 languages, auto language detection, WER 6.3%", langSupport: "parakeet-multi", tier: "standard", preferred: true, accuracy: 4, speed: 4,
 		sherpaModel: {
-			type: "moonshine",
-			files: { encoder: "encoder_model.ort", mergedDecoder: "decoder_model_merged.ort", tokens: "tokens.txt" },
+			type: "transducer",
+			files: { encoder: "encoder.int8.onnx", decoder: "decoder.int8.onnx", joiner: "joiner.int8.onnx", tokens: "tokens.txt" },
 			downloadUrls: {
-				encoder: hf2("sherpa-onnx-moonshine-tiny-en-quantized-2026-02-27", "encoder_model.ort"),
-				mergedDecoder: hf2("sherpa-onnx-moonshine-tiny-en-quantized-2026-02-27", "decoder_model_merged.ort"),
-				tokens: hf2("sherpa-onnx-moonshine-tiny-en-quantized-2026-02-27", "tokens.txt"),
+				encoder: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8", "encoder.int8.onnx"),
+				decoder: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8", "decoder.int8.onnx"),
+				joiner: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8", "joiner.int8.onnx"),
+				tokens: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8", "tokens.txt"),
 			},
 		},
 	},
-	// ── Moonshine v1 (Useful Sensors) — English only, uses preprocessor+encoder+uncachedDecoder+cachedDecoder ──
+	{
+		id: "parakeet-v2", name: "Parakeet TDT v2", size: "~661 MB", sizeBytes: 693_109_760, runtimeRamMB: 1650,
+		notes: "Best English — lowest WER (6.0%), fast, NVIDIA NeMo", langSupport: "english-only", tier: "standard", preferred: true, accuracy: 5, speed: 4,
+		sherpaModel: {
+			type: "transducer",
+			files: { encoder: "encoder.int8.onnx", decoder: "decoder.int8.onnx", joiner: "joiner.int8.onnx", tokens: "tokens.txt" },
+			downloadUrls: {
+				encoder: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8", "encoder.int8.onnx"),
+				decoder: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8", "decoder.int8.onnx"),
+				joiner: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8", "joiner.int8.onnx"),
+				tokens: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8", "tokens.txt"),
+			},
+		},
+	},
+	// ═══════════════════════════════════════════════════════════════════════
+	// WHISPER — OpenAI, broadest language support (57 languages)
+	// ═══════════════════════════════════════════════════════════════════════
+	{
+		id: "whisper-turbo", name: "Whisper Turbo", size: "~1.0 GB", sizeBytes: 1_087_373_312, runtimeRamMB: 2590,
+		notes: "57 languages, good accuracy, faster than Medium and Large", langSupport: "whisper", tier: "heavy", accuracy: 4, speed: 2,
+		sherpaModel: {
+			type: "whisper",
+			files: { encoder: "turbo-encoder.int8.onnx", decoder: "turbo-decoder.int8.onnx", tokens: "turbo-tokens.txt" },
+			downloadUrls: {
+				encoder: hf1("sherpa-onnx-whisper-turbo", "turbo-encoder.int8.onnx"),
+				decoder: hf1("sherpa-onnx-whisper-turbo", "turbo-decoder.int8.onnx"),
+				tokens: hf1("sherpa-onnx-whisper-turbo", "turbo-tokens.txt"),
+			},
+		},
+	},
+	{
+		id: "whisper-medium", name: "Whisper Medium", size: "~946 MB", sizeBytes: 991_952_896, runtimeRamMB: 2365,
+		notes: "57 languages, good accuracy, medium speed", langSupport: "whisper", tier: "standard", accuracy: 4, speed: 3,
+		sherpaModel: {
+			type: "whisper",
+			files: { encoder: "medium-encoder.int8.onnx", decoder: "medium-decoder.int8.onnx", tokens: "medium-tokens.txt" },
+			downloadUrls: {
+				encoder: hf1("sherpa-onnx-whisper-medium", "medium-encoder.int8.onnx"),
+				decoder: hf1("sherpa-onnx-whisper-medium", "medium-decoder.int8.onnx"),
+				tokens: hf1("sherpa-onnx-whisper-medium", "medium-tokens.txt"),
+			},
+		},
+	},
+	{
+		id: "whisper-small", name: "Whisper Small", size: "~375 MB", sizeBytes: 393_216_000, runtimeRamMB: 940,
+		notes: "57 languages, fast, good for low-power devices", langSupport: "whisper", tier: "standard", accuracy: 3, speed: 4,
+		sherpaModel: {
+			type: "whisper",
+			files: { encoder: "small-encoder.int8.onnx", decoder: "small-decoder.int8.onnx", tokens: "small-tokens.txt" },
+			downloadUrls: {
+				encoder: hf1("sherpa-onnx-whisper-small", "small-encoder.int8.onnx"),
+				decoder: hf1("sherpa-onnx-whisper-small", "small-decoder.int8.onnx"),
+				tokens: hf1("sherpa-onnx-whisper-small", "small-tokens.txt"),
+			},
+		},
+	},
+	{
+		id: "whisper-large", name: "Whisper Large v3", size: "~1.8 GB", sizeBytes: 1_863_319_552, runtimeRamMB: 4440,
+		notes: "57 languages, highest Whisper accuracy, slow on CPU", langSupport: "whisper", tier: "heavy", accuracy: 4, speed: 1,
+		sherpaModel: {
+			type: "whisper",
+			files: { encoder: "large-v3-encoder.int8.onnx", decoder: "large-v3-decoder.int8.onnx", tokens: "large-v3-tokens.txt" },
+			downloadUrls: {
+				encoder: hf1("sherpa-onnx-whisper-large-v3", "large-v3-encoder.int8.onnx"),
+				decoder: hf1("sherpa-onnx-whisper-large-v3", "large-v3-decoder.int8.onnx"),
+				tokens: hf1("sherpa-onnx-whisper-large-v3", "large-v3-tokens.txt"),
+			},
+		},
+	},
+	// ═══════════════════════════════════════════════════════════════════════
+	// MOONSHINE — ultra-fast edge models
+	// ═══════════════════════════════════════════════════════════════════════
+	{
+		id: "moonshine-base", name: "Moonshine Base", size: "~287 MB", sizeBytes: 300_940_288, runtimeRamMB: 720,
+		notes: "English only, very fast, handles accents well", langSupport: "english-only", tier: "standard", accuracy: 3, speed: 5,
+		sherpaModel: {
+			type: "moonshine",
+			files: { preprocessor: "preprocess.onnx", encoder: "encode.int8.onnx", uncachedDecoder: "uncached_decode.int8.onnx", cachedDecoder: "cached_decode.int8.onnx", tokens: "tokens.txt" },
+			downloadUrls: {
+				preprocessor: hf1("sherpa-onnx-moonshine-base-en-int8", "preprocess.onnx"),
+				encoder: hf1("sherpa-onnx-moonshine-base-en-int8", "encode.int8.onnx"),
+				uncachedDecoder: hf1("sherpa-onnx-moonshine-base-en-int8", "uncached_decode.int8.onnx"),
+				cachedDecoder: hf1("sherpa-onnx-moonshine-base-en-int8", "cached_decode.int8.onnx"),
+				tokens: hf1("sherpa-onnx-moonshine-base-en-int8", "tokens.txt"),
+			},
+		},
+	},
 	{
 		id: "moonshine-tiny", name: "Moonshine Tiny", size: "~124 MB", sizeBytes: 130_023_424, runtimeRamMB: 310,
-		notes: "WER ~12%, 5x faster than Whisper Tiny, English only", langSupport: "english-only", tier: "edge", accuracy: 2, speed: 5,
+		notes: "English only, 5x faster than Whisper Tiny, low accuracy", langSupport: "english-only", tier: "edge", accuracy: 2, speed: 5,
 		sherpaModel: {
 			type: "moonshine",
 			files: { preprocessor: "preprocess.onnx", encoder: "encode.int8.onnx", uncachedDecoder: "uncached_decode.int8.onnx", cachedDecoder: "cached_decode.int8.onnx", tokens: "tokens.txt" },
@@ -116,74 +205,48 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 		},
 	},
 	{
-		id: "moonshine-base", name: "Moonshine Base", size: "~287 MB", sizeBytes: 300_940_288, runtimeRamMB: 720,
-		notes: "Very fast, English only, handles accents well", langSupport: "english-only", tier: "standard", accuracy: 3, speed: 5,
+		id: "moonshine-v2-tiny", name: "Moonshine v2 Tiny", size: "~43 MB", sizeBytes: 45_088_768, runtimeRamMB: 110,
+		notes: "English only, smallest model, 34ms latency, Raspberry Pi friendly", langSupport: "english-only", tier: "edge", preferred: true, accuracy: 2, speed: 5,
 		sherpaModel: {
 			type: "moonshine",
-			files: { preprocessor: "preprocess.onnx", encoder: "encode.int8.onnx", uncachedDecoder: "uncached_decode.int8.onnx", cachedDecoder: "cached_decode.int8.onnx", tokens: "tokens.txt" },
+			files: { encoder: "encoder_model.ort", mergedDecoder: "decoder_model_merged.ort", tokens: "tokens.txt" },
 			downloadUrls: {
-				preprocessor: hf1("sherpa-onnx-moonshine-base-en-int8", "preprocess.onnx"),
-				encoder: hf1("sherpa-onnx-moonshine-base-en-int8", "encode.int8.onnx"),
-				uncachedDecoder: hf1("sherpa-onnx-moonshine-base-en-int8", "uncached_decode.int8.onnx"),
-				cachedDecoder: hf1("sherpa-onnx-moonshine-base-en-int8", "cached_decode.int8.onnx"),
-				tokens: hf1("sherpa-onnx-moonshine-base-en-int8", "tokens.txt"),
+				encoder: hf2("sherpa-onnx-moonshine-tiny-en-quantized-2026-02-27", "encoder_model.ort"),
+				mergedDecoder: hf2("sherpa-onnx-moonshine-tiny-en-quantized-2026-02-27", "decoder_model_merged.ort"),
+				tokens: hf2("sherpa-onnx-moonshine-tiny-en-quantized-2026-02-27", "tokens.txt"),
 			},
 		},
 	},
-	// ── Whisper (OpenAI) — multilingual, 57 languages ─────────────────────
+	// ═══════════════════════════════════════════════════════════════════════
+	// SPECIALIST — best-in-class for specific languages
+	// ═══════════════════════════════════════════════════════════════════════
 	{
-		id: "whisper-small", name: "Whisper Small", size: "~375 MB", sizeBytes: 393_216_000, runtimeRamMB: 940,
-		notes: "WER 8.6%, 57 languages, fast and fairly accurate", langSupport: "whisper", tier: "standard", accuracy: 3, speed: 4,
+		id: "sensevoice-small", name: "SenseVoice Small", size: "~228 MB", sizeBytes: 239_075_328, runtimeRamMB: 570,
+		notes: "Chinese, English, Japanese, Korean, Cantonese — very fast", langSupport: "sensevoice", tier: "edge", preferred: true, accuracy: 3, speed: 5,
 		sherpaModel: {
-			type: "whisper",
-			files: { encoder: "small-encoder.int8.onnx", decoder: "small-decoder.int8.onnx", tokens: "small-tokens.txt" },
+			type: "sense_voice",
+			files: { model: "model.int8.onnx", tokens: "tokens.txt" },
 			downloadUrls: {
-				encoder: hf1("sherpa-onnx-whisper-small", "small-encoder.int8.onnx"),
-				decoder: hf1("sherpa-onnx-whisper-small", "small-decoder.int8.onnx"),
-				tokens: hf1("sherpa-onnx-whisper-small", "small-tokens.txt"),
-			},
-		},
-	},
-	{
-		id: "whisper-medium", name: "Whisper Medium", size: "~946 MB", sizeBytes: 991_952_896, runtimeRamMB: 2365,
-		notes: "WER ~7.5%, 57 languages, good accuracy, medium speed", langSupport: "whisper", tier: "standard", accuracy: 4, speed: 3,
-		sherpaModel: {
-			type: "whisper",
-			files: { encoder: "medium-encoder.int8.onnx", decoder: "medium-decoder.int8.onnx", tokens: "medium-tokens.txt" },
-			downloadUrls: {
-				encoder: hf1("sherpa-onnx-whisper-medium", "medium-encoder.int8.onnx"),
-				decoder: hf1("sherpa-onnx-whisper-medium", "medium-decoder.int8.onnx"),
-				tokens: hf1("sherpa-onnx-whisper-medium", "medium-tokens.txt"),
+				model: hf1("sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17", "model.int8.onnx"),
+				tokens: hf1("sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17", "tokens.txt"),
 			},
 		},
 	},
 	{
-		id: "whisper-turbo", name: "Whisper Turbo", size: "~1.0 GB", sizeBytes: 1_087_373_312, runtimeRamMB: 2590,
-		notes: "WER ~7%, 57 languages, balanced accuracy and speed", langSupport: "whisper", tier: "heavy", accuracy: 4, speed: 2,
+		id: "gigaam-v3", name: "GigaAM v3", size: "~225 MB", sizeBytes: 235_929_600, runtimeRamMB: 560,
+		notes: "Russian — fast and accurate, 50% lower WER than Whisper", langSupport: "russian-only", tier: "edge", preferred: true, accuracy: 4, speed: 4,
 		sherpaModel: {
-			type: "whisper",
-			files: { encoder: "turbo-encoder.int8.onnx", decoder: "turbo-decoder.int8.onnx", tokens: "turbo-tokens.txt" },
+			type: "nemo_ctc",
+			files: { model: "model.int8.onnx", tokens: "tokens.txt" },
 			downloadUrls: {
-				encoder: hf1("sherpa-onnx-whisper-turbo", "turbo-encoder.int8.onnx"),
-				decoder: hf1("sherpa-onnx-whisper-turbo", "turbo-decoder.int8.onnx"),
-				tokens: hf1("sherpa-onnx-whisper-turbo", "turbo-tokens.txt"),
+				model: hf1("sherpa-onnx-nemo-ctc-giga-am-v3-russian-2025-12-16", "model.int8.onnx"),
+				tokens: hf1("sherpa-onnx-nemo-ctc-giga-am-v3-russian-2025-12-16", "tokens.txt"),
 			},
 		},
 	},
-	{
-		id: "whisper-large", name: "Whisper Large v3", size: "~1.8 GB", sizeBytes: 1_863_319_552, runtimeRamMB: 4440,
-		notes: "WER 7.4%, best Whisper, 57 languages, slow", langSupport: "whisper", tier: "heavy", accuracy: 4, speed: 1,
-		sherpaModel: {
-			type: "whisper",
-			files: { encoder: "large-v3-encoder.int8.onnx", decoder: "large-v3-decoder.int8.onnx", tokens: "large-v3-tokens.txt" },
-			downloadUrls: {
-				encoder: hf1("sherpa-onnx-whisper-large-v3", "large-v3-encoder.int8.onnx"),
-				decoder: hf1("sherpa-onnx-whisper-large-v3", "large-v3-decoder.int8.onnx"),
-				tokens: hf1("sherpa-onnx-whisper-large-v3", "large-v3-tokens.txt"),
-			},
-		},
-	},
-	// ── Moonshine v2 language-specialized (csukuangfj2) — uses encoder+mergedDecoder ──
+	// ═══════════════════════════════════════════════════════════════════════
+	// MOONSHINE v2 LANGUAGE VARIANTS — fast, single-language specialized
+	// ═══════════════════════════════════════════════════════════════════════
 	{
 		id: "moonshine-v2-tiny-ja", name: "Moonshine v2 Tiny Japanese", size: "~69 MB", sizeBytes: 72_351_744, runtimeRamMB: 175,
 		notes: "Japanese-specialized, ultra-fast", langSupport: "single-ja", tier: "edge", accuracy: 3, speed: 5,

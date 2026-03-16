@@ -94,10 +94,12 @@ export function getModelFitness(model: LocalModelInfo, device: DeviceProfile): M
 	const runtimeRamMB = model.runtimeRamMB ?? estimateRuntimeRam(model.sizeBytes);
 	const ratio = runtimeRamMB / device.totalRamMB;
 
+	// >80% of total RAM — won't run
 	if (ratio > 0.8) return "incompatible";
-	if (runtimeRamMB > device.freeRamMB) return "warning";
-	// Only preferred models get "recommended" — others that fit are "compatible"
-	if (model.preferred && ratio < 0.5) return "recommended";
+	// >60% of total RAM — will run but may cause swapping
+	if (ratio > 0.6) return "warning";
+	// Preferred models that fit comfortably get "recommended"
+	if (model.preferred && ratio < 0.4) return "recommended";
 	return "compatible";
 }
 
