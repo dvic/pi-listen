@@ -2335,76 +2335,264 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
-	// ─── /voice-models — local model management ─────────────────────────────
+	// ─── /voice-models — interactive local model management ─────────────────
 
 	pi.registerCommand("voice-models", {
-		description: "Manage local voice models — list, download, delete, switch",
+		description: "Manage local voice models — interactive panel with fuzzy search",
 		handler: async (args, cmdCtx) => {
 			ctx = cmdCtx;
-			const sub = (args || "").trim().toLowerCase();
 
+			const { Container, Input, Spacer, Text, fuzzyFilter, getEditorKeybindings } = await import("@mariozechner/pi-tui");
 			const { detectDevice, getModelFitness, formatDeviceSummary } = await import("./voice/device");
-			const { getDownloadedModels, deleteModel, isModelDownloaded } = await import("./voice/model-download");
-			const { isSherpaAvailable } = await import("./voice/sherpa-engine");
-			const { pickLocalModel } = await import("./voice/onboarding");
+			const { getDownloadedModels, deleteModel } = await import("./voice/model-download");
+			const { isSherpaAvailable, clearRecognizerCache } = await import("./voice/sherpa-engine");
 
-			if (sub === "list" || sub === "" || !sub) {
-				// List all models with device fitness + download status
-				const device = detectDevice();
-				const downloaded = getDownloadedModels();
-				const downloadedIds = new Set(downloaded.map(d => d.id));
-				const lines = [
-					`Local models (${formatDeviceSummary(device)}):`,
-					`sherpa-onnx: ${isSherpaAvailable() ? "available" : "not initialized"}`,
-					"",
-				];
+			type Tab = "models" | "downloaded" | "device";
+			const TABS: { id: Tab; label: string }[] = [
+				{ id: "models", label: "All Models" },
+				{ id: "downloaded", label: "Downloaded" },
+				{ id: "device", label: "Device" },
+			];
 
-				const currentModel = config.localModel || "whisper-small";
-				for (const m of LOCAL_MODELS) {
-					const fitness = getModelFitness(m, device);
-					const isDownloaded = downloadedIds.has(m.id);
-					const isCurrent = m.id === currentModel;
-					const dlInfo = downloaded.find(d => d.id === m.id);
-					const badge = fitness === "recommended" ? " [recommended]" :
-						fitness === "compatible" ? "" :
-						fitness === "warning" ? " [may be slow]" : " [too large]";
-					const status = isCurrent ? " (active)" : isDownloaded ? ` (${dlInfo?.sizeMB || "?"}MB on disk)` : "";
-					const prefix = isCurrent ? "→ " : "  ";
-					lines.push(`${prefix}${m.name} — ${m.size}${badge}${status}`);
+			const device = detectDevice();
+			const currentModelId = config.localModel || "whisper-small";
+
+			// Pre-compute model list with fitness
+			const allModels = LOCAL_MODELS.map(m => {
+				const fitness = getModelFitness(m, device);
+				return { ...m, fitness };
+			});
+			const fitnessOrder = { recommended: 0, compatible: 1, warning: 2, incompatible: 3 } as const;
+			allModels.sort((a, b) => {
+				const fitDiff = fitnessOrder[a.fitness] - fitnessOrder[b.fitness];
+				return fitDiff !== 0 ? fitDiff : b.sizeBytes - a.sizeBytes;
+			});
+
+			const result = await cmdCtx.ui.custom<{ action: string; modelId?: string } | undefined>((tui, theme, _kb, done) => {
+				const root = new Container();
+				const searchInput = new Input();
+				const contentContainer = new Container();
+
+				let activeTab: Tab = "models";
+				let selectedIndex = 0;
+				let filtered = allModels;
+
+				function fitnessbadge(f: string): string {
+					switch (f) {
+						case "recommended": return theme.fg("success", "[recommended]");
+						case "compatible": return theme.fg("accent", "[compatible]");
+						case "warning": return theme.fg("warning", "[may be slow]");
+						case "incompatible": return theme.fg("error", "[too large]");
+						default: return "";
+					}
 				}
 
-				lines.push(
-					"",
-					"Commands:",
-					"  /voice-models switch    — Pick a different model (fuzzy search)",
-					"  /voice-models delete    — Delete a downloaded model",
-					"  /voice-models device    — Show device profile",
-				);
-				cmdCtx.ui.notify(lines.join("\n"), "info");
-				return;
-			}
-
-			if (sub === "switch" || sub === "change" || sub === "pick") {
-				const picked = await pickLocalModel(cmdCtx, config.localModel, config.language);
-				if (!picked) {
-					cmdCtx.ui.notify("Model selection cancelled.", "info");
-					return;
+				function renderTabs() {
+					const parts = TABS.map(t => {
+						const label = ` ${t.label} `;
+						return t.id === activeTab
+							? theme.fg("accent", `[${label}]`)
+							: theme.fg("muted", ` ${label} `);
+					});
+					return parts.join(theme.fg("muted", "  "));
 				}
 
-				// Clear cached recognizer if model changed
+				function getDownloaded() {
+					return getDownloadedModels().map(d => {
+						const model = LOCAL_MODELS.find(m => m.id === d.id);
+						return { ...d, name: model?.name || d.id, isCurrent: d.id === currentModelId };
+					});
+				}
+
+				function renderContent() {
+					contentContainer.clear();
+
+					if (activeTab === "models") {
+						const maxVisible = 14;
+						const start = Math.max(0, Math.min(selectedIndex - Math.floor(maxVisible / 2), filtered.length - maxVisible));
+						const end = Math.min(start + maxVisible, filtered.length);
+
+						for (let i = start; i < end; i++) {
+							const item = filtered[i];
+							if (!item) continue;
+							const isSelected = i === selectedIndex;
+							const isCurrent = item.id === currentModelId;
+							const prefix = isSelected ? theme.fg("accent", "→ ") : "  ";
+							const nameText = isSelected ? theme.fg("accent", item.name) : item.name;
+							const sizeText = theme.fg("muted", ` — ${item.size}`);
+							const badge = fitnessBadge(item.fitness);
+							const notes = theme.fg("muted", ` (${item.notes})`);
+							const check = isCurrent ? theme.fg("success", " ✓ active") : "";
+							contentContainer.addChild(new Text(`${prefix}${nameText}${sizeText} ${badge}${notes}${check}`, 0, 0));
+						}
+
+						if (filtered.length === 0) {
+							contentContainer.addChild(new Text(theme.fg("muted", "  No matching models"), 0, 0));
+						} else if (start > 0 || end < filtered.length) {
+							contentContainer.addChild(new Text(theme.fg("muted", `  (${selectedIndex + 1}/${filtered.length})`), 0, 0));
+						}
+
+						contentContainer.addChild(new Text("", 0, 0));
+						contentContainer.addChild(new Text(theme.fg("muted", "  Enter = activate model  |  ←→ = switch tab  |  Esc = close"), 0, 0));
+					} else if (activeTab === "downloaded") {
+						const dl = getDownloaded();
+						if (dl.length === 0) {
+							contentContainer.addChild(new Text(theme.fg("muted", "  No downloaded models yet."), 0, 0));
+							contentContainer.addChild(new Text(theme.fg("muted", "  Models download automatically on first recording."), 0, 0));
+						} else {
+							for (let i = 0; i < dl.length; i++) {
+								const d = dl[i]!;
+								const isSelected = i === selectedIndex;
+								const prefix = isSelected ? theme.fg("accent", "→ ") : "  ";
+								const nameText = isSelected ? theme.fg("accent", d.name) : d.name;
+								const sizeText = theme.fg("muted", ` — ${d.sizeMB} MB on disk`);
+								const badge = d.isCurrent ? theme.fg("success", " ✓ active") : "";
+								contentContainer.addChild(new Text(`${prefix}${nameText}${sizeText}${badge}`, 0, 0));
+							}
+						}
+
+						contentContainer.addChild(new Text("", 0, 0));
+						const hint = dl.length > 0
+							? "  Enter = activate  |  Del/d = delete  |  ←→ = switch tab  |  Esc = close"
+							: "  ←→ = switch tab  |  Esc = close";
+						contentContainer.addChild(new Text(theme.fg("muted", hint), 0, 0));
+					} else {
+						// Device tab
+						const gpuLabel = device.gpu.hasNvidia
+							? (device.gpu.gpuName || "NVIDIA")
+							: device.gpu.hasMetal ? "Apple Silicon (Metal)" : "none";
+
+						contentContainer.addChild(new Text(`  Platform     ${device.platform} ${device.arch}`, 0, 0));
+						contentContainer.addChild(new Text(`  RAM          ${(device.totalRamMB / 1024).toFixed(1)} GB total, ${(device.freeRamMB / 1024).toFixed(1)} GB free`, 0, 0));
+						contentContainer.addChild(new Text(`  CPU          ${device.cpuCores} cores — ${device.cpuModel}`, 0, 0));
+						contentContainer.addChild(new Text(`  GPU          ${gpuLabel}`, 0, 0));
+						if (device.gpu.vramMB) {
+							contentContainer.addChild(new Text(`  VRAM         ${device.gpu.vramMB} MB`, 0, 0));
+						}
+						if (device.isRaspberryPi) {
+							contentContainer.addChild(new Text(`  Raspberry Pi ${device.piModel || "yes"}`, 0, 0));
+						}
+						contentContainer.addChild(new Text(`  Container    ${device.isContainer ? "yes" : "no"}`, 0, 0));
+						contentContainer.addChild(new Text(`  Locale       ${device.systemLocale}`, 0, 0));
+						contentContainer.addChild(new Text(`  sherpa-onnx  ${isSherpaAvailable() ? "available" : "not initialized"}`, 0, 0));
+						contentContainer.addChild(new Text("", 0, 0));
+						contentContainer.addChild(new Text(theme.fg("muted", "  ←→ = switch tab  |  Esc = close"), 0, 0));
+					}
+
+					tui.requestRender();
+				}
+
+				// Alias for the badge function used inside renderContent
+				function fitnessBadge(f: string): string { return fitnessbadge(f); }
+
+				function filterModels(query: string) {
+					if (!query) {
+						filtered = allModels;
+					} else {
+						filtered = fuzzyFilter(allModels, query, (item) => `${item.name} ${item.id} ${item.notes} ${item.langSupport}`);
+					}
+					selectedIndex = Math.min(selectedIndex, Math.max(0, filtered.length - 1));
+					renderContent();
+				}
+
+				function switchTab(direction: -1 | 1) {
+					const currentIdx = TABS.findIndex(t => t.id === activeTab);
+					const nextIdx = (currentIdx + direction + TABS.length) % TABS.length;
+					activeTab = TABS[nextIdx]!.id;
+					selectedIndex = 0;
+					searchInput.setValue?.("") ?? void 0;
+					renderHeader();
+					renderContent();
+				}
+
+				function renderHeader() {
+					// Rebuild header each time tab changes
+					root.clear();
+					root.addChild(new Spacer(1));
+					root.addChild(new Text(theme.fg("accent", `Voice Models (${formatDeviceSummary(device)})`), 1, 0));
+					root.addChild(new Text(renderTabs(), 1, 0));
+					root.addChild(new Spacer(1));
+					if (activeTab === "models") {
+						root.addChild(new Text(theme.fg("muted", "Type to search, ↑↓ navigate, ←→ switch tab"), 1, 0));
+						root.addChild(searchInput);
+						root.addChild(new Spacer(1));
+					}
+					root.addChild(contentContainer);
+					root.addChild(new Spacer(1));
+				}
+
+				// Initial render
+				renderHeader();
+				renderContent();
+
+				const kb = getEditorKeybindings();
+				(root as any).handleInput = (keyData: string) => {
+					// Left/Right arrow — switch tabs
+					if (keyData === "\x1b[D" || keyData === "\x1bOD") { // Left arrow
+						switchTab(-1);
+						return;
+					}
+					if (keyData === "\x1b[C" || keyData === "\x1bOC") { // Right arrow
+						switchTab(1);
+						return;
+					}
+
+					if (kb.matches(keyData, "selectUp")) {
+						const max = activeTab === "downloaded" ? getDownloaded().length : filtered.length;
+						if (max === 0) return;
+						selectedIndex = selectedIndex === 0 ? max - 1 : selectedIndex - 1;
+						renderContent();
+					} else if (kb.matches(keyData, "selectDown")) {
+						const max = activeTab === "downloaded" ? getDownloaded().length : filtered.length;
+						if (max === 0) return;
+						selectedIndex = selectedIndex === max - 1 ? 0 : selectedIndex + 1;
+						renderContent();
+					} else if (kb.matches(keyData, "selectConfirm") || keyData === "\n") {
+						if (activeTab === "models") {
+							const item = filtered[selectedIndex];
+							if (item) done({ action: "switch", modelId: item.id });
+						} else if (activeTab === "downloaded") {
+							const dl = getDownloaded();
+							const item = dl[selectedIndex];
+							if (item) done({ action: "switch", modelId: item.id });
+						}
+					} else if (activeTab === "downloaded" && (keyData === "d" || keyData === "\x1b[3~")) {
+						// 'd' key or Delete key — delete model
+						const dl = getDownloaded();
+						const item = dl[selectedIndex];
+						if (item) done({ action: "delete", modelId: item.id });
+					} else if (kb.matches(keyData, "selectCancel")) {
+						done(undefined);
+					} else if (activeTab === "models") {
+						searchInput.handleInput(keyData);
+						filterModels(searchInput.getValue());
+					}
+				};
+
+				Object.defineProperty(root, "focused", {
+					get: () => (searchInput as any).focused,
+					set: (v: boolean) => { (searchInput as any).focused = v; },
+				});
+
+				return root;
+			});
+
+			// Handle result
+			if (!result) return;
+
+			if (result.action === "switch" && result.modelId) {
+				const picked = LOCAL_MODELS.find(m => m.id === result.modelId);
+				if (!picked) return;
+
 				if (config.localModel !== picked.id) {
-					try {
-						const { clearRecognizerCache } = await import("./voice/sherpa-engine");
-						clearRecognizerCache();
-					} catch {}
+					try { clearRecognizerCache(); } catch {}
 				}
 
 				config.localModel = picked.id;
 				config.backend = "local";
-				config.localEndpoint = undefined; // Switch to in-process
+				config.localEndpoint = undefined;
 				saveConfig(config, config.scope === "project" ? "project" : "global", currentCwd);
 
-				const device = detectDevice();
 				const fitness = getModelFitness(picked, device);
 				const badge = fitness === "recommended" ? " (recommended)" :
 					fitness === "compatible" ? "" :
@@ -2414,60 +2602,17 @@ export default function (pi: ExtensionAPI) {
 					`Switched to ${picked.name}${badge}\nModel will download automatically on first recording.`,
 					fitness === "incompatible" ? "warning" : "info",
 				);
-				return;
-			}
-
-			if (sub === "delete" || sub === "remove") {
-				const downloaded = getDownloadedModels();
-				if (downloaded.length === 0) {
-					cmdCtx.ui.notify("No downloaded models to delete.", "info");
-					return;
-				}
-
-				const options = downloaded.map(d => `${d.id} (${d.sizeMB} MB)`);
-				const choice = await cmdCtx.ui.select("Delete which model?", options);
-				if (!choice) return;
-
-				const modelId = choice.split(" (")[0]!;
+			} else if (result.action === "delete" && result.modelId) {
+				const modelId = result.modelId;
 				if (deleteModel(modelId)) {
-					// Clear cached recognizer if deleting active model
 					if (config.localModel === modelId) {
-						try {
-							const { clearRecognizerCache } = await import("./voice/sherpa-engine");
-							clearRecognizerCache();
-						} catch {}
+						try { clearRecognizerCache(); } catch {}
 					}
 					cmdCtx.ui.notify(`Deleted ${modelId}.`, "info");
 				} else {
 					cmdCtx.ui.notify(`Failed to delete ${modelId}.`, "error");
 				}
-				return;
 			}
-
-			if (sub === "device" || sub === "info") {
-				const device = detectDevice();
-				const lines = [
-					"Device profile:",
-					"",
-					`  Platform:    ${device.platform} ${device.arch}`,
-					`  RAM:         ${(device.totalRamMB / 1024).toFixed(1)} GB total, ${(device.freeRamMB / 1024).toFixed(1)} GB free`,
-					`  CPU:         ${device.cpuCores} cores — ${device.cpuModel}`,
-					`  RPi:         ${device.isRaspberryPi ? (device.piModel || "yes") : "no"}`,
-					`  GPU:         ${device.gpu.hasNvidia ? (device.gpu.gpuName || "NVIDIA") : device.gpu.hasMetal ? "Apple Silicon (Metal)" : "none"}`,
-					`  Container:   ${device.isContainer ? "yes" : "no"}`,
-					`  Locale:      ${device.systemLocale}`,
-				];
-				if (device.gpu.vramMB) {
-					lines.push(`  VRAM:        ${device.gpu.vramMB} MB`);
-				}
-				cmdCtx.ui.notify(lines.join("\n"), "info");
-				return;
-			}
-
-			cmdCtx.ui.notify(
-				"Usage: /voice-models [list|switch|delete|device]",
-				"info",
-			);
 		},
 	});
 

@@ -28,7 +28,7 @@ pi install npm:@codexstar/pi-listen
 
 ### 2. Get a Deepgram API key
 
-Sign up at [dpgr.am/pi-voice](https://dpgr.am/pi-voice) — $200 free credit, no card needed.
+Sign up at [dpgr.am/pi-voice](https://dpgr.am/pi-voice) — $200 free credit, no card needed. Depending on usage, this typically lasts 6 months to 1 year for most developers.
 
 ```bash
 export DEEPGRAM_API_KEY="your-key-here"    # add to ~/.zshrc or ~/.bashrc
@@ -93,6 +93,47 @@ If none are found, `/voice test` tells you what to install.
 | `/voice info` | Show current config and status |
 | `/voice history` | Recent transcriptions |
 | `/voice` | Toggle on/off |
+| `/voice-models` | Interactive model manager — tabbed panel with fuzzy search |
+
+---
+
+## Local Models (Offline Transcription)
+
+pi-listen supports fully offline speech-to-text via local models. No API key required — models download automatically on first use.
+
+### Getting started with local models
+
+```bash
+# During setup, choose "Local model" when prompted:
+/voice-setup
+
+# Or switch anytime with the interactive model manager:
+/voice-models
+```
+
+### Interactive model manager
+
+`/voice-models` opens a tabbed panel with three views:
+
+| Tab | Description |
+|-----|-------------|
+| **All Models** | Browse 20+ models with fuzzy search, fitness badges, and one-key activation |
+| **Downloaded** | Manage downloaded models — activate or delete with a single keystroke |
+| **Device** | View hardware profile (RAM, CPU, GPU) used for model recommendations |
+
+**Navigation:** `←` `→` switch tabs, `↑` `↓` navigate items, type to search, `Enter` to activate, `d` to delete, `Esc` to close.
+
+### Available model families
+
+| Family | Languages | Sizes | Best for |
+|--------|-----------|-------|----------|
+| **Moonshine v2** | English + 7 specialized (ja, ko, ar, zh, uk, vi, es) | 43–135 MB | Edge devices, Raspberry Pi, fast inference |
+| **Whisper** (OpenAI) | 57 languages | 375 MB – 1.8 GB | Broad language coverage, proven accuracy |
+| **SenseVoice** (Alibaba) | zh, en, ja, ko, yue | 228 MB | CJK languages, ultra-fast batch |
+| **GigaAM v3** (Sber) | Russian | 225 MB | Russian (50% lower WER than Whisper) |
+| **Parakeet** (NVIDIA) | English + multilingual | 661–671 MB | High accuracy, transducer architecture |
+
+Models are scored against your device hardware — the manager shows `[recommended]`, `[compatible]`, `[may be slow]`, or `[too large]` for each model so you can make an informed choice.
 
 ---
 
@@ -108,6 +149,9 @@ If none are found, `/voice test` tells you what to install.
 | **56+ languages** | `/voice-language` fuzzy picker — Chinese auto-switches to Nova-2 |
 | **Continuous dictation** | `/voice dictate` for long-form input without holding keys |
 | **Double-escape clear** | Press Escape twice to clear the editor |
+| **Offline local models** | 20+ models from Moonshine, Whisper, SenseVoice, GigaAM, Parakeet — auto-download, zero config |
+| **Smart model recommendations** | Device-aware fitness scoring — recommends the best model for your hardware |
+| **Interactive model manager** | Tabbed TUI panel with fuzzy search, keyboard navigation, and one-key actions |
 | **Zero-config start** | Auto-activates if `DEEPGRAM_API_KEY` is set — no wizard needed |
 | **First-run diagnostics** | Checks API key + audio tool on first launch, shows what's ready and what to install |
 | **API key validation** | `/voice test` validates your key against the live Deepgram API |
@@ -155,10 +199,14 @@ Both modes: ≥1.2s hold to activate. Quick taps type a normal space.
 ### Architecture
 
 ```
-extensions/voice.ts              Main extension — state machine, recording, UI
+extensions/voice.ts              Main extension — state machine, recording, UI, model manager
 extensions/voice/config.ts       Config loading, saving, migration
-extensions/voice/onboarding.ts   First-run setup wizard, language picker
+extensions/voice/onboarding.ts   First-run setup wizard, language picker, model picker
 extensions/voice/deepgram.ts     Deepgram URL builder, API key resolver
+extensions/voice/local.ts        Local model catalog, in-process transcription, WAV encoding
+extensions/voice/device.ts       Device profiling — RAM, GPU, CPU, container detection
+extensions/voice/model-download.ts  Model download manager — resume, progress, atomic writes
+extensions/voice/sherpa-engine.ts   sherpa-onnx bindings — recognizer lifecycle, inference
 ```
 
 ---
