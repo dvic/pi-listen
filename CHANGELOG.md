@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.1] - 2026-03-16
+
+### Security
+- **API key no longer leaks into project config** — `deepgramApiKey` is stripped at serialization time when saving to project scope. Previously, env-derived API keys could be auto-persisted into `.pi/settings.json` inside repos, risking accidental credential commits.
+- **Mic audio exfiltration blocked** — `localEndpoint` in project config is now restricted to loopback addresses only (localhost/127.0.0.1/::1). A malicious repo can no longer redirect microphone audio to a remote server.
+- **Shell injection prevented in API key onboarding** — API keys are now escaped using single-quote shell escaping before writing to `~/.env.secrets` or `~/.zshrc`. Keys with embedded newlines are rejected. New secrets files are created with `0600` permissions.
+
+### Fixed
+- **Atomic config writes** — settings are now written to a temp file and renamed, preventing corruption from partial writes or concurrent saves.
+- **Deleting active model no longer leaves broken config** — when the active local model is deleted from the settings panel, config switches to another downloaded model (or clears the selection) instead of leaving a dangling reference.
+- **Timeout timer cleanup** — the 120s transcription timeout in local mode is now properly cleared when transcription finishes early, preventing resource leaks.
+- **Config parse errors logged** — `readJsonFile()` now logs warnings to stderr instead of silently swallowing parse/read errors.
+- **Inconsistent default model** — settings panel now uses `parakeet-v3` as fallback instead of `whisper-small`, matching `DEFAULT_LOCAL_MODEL`.
+
+### Added
+- 19 new regression tests covering secret stripping, endpoint validation, atomic writes, shell escaping, and loopback detection.
+
 ## [4.0.0] - 2026-03-14
 
 ### Removed
@@ -99,6 +116,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - VAD pre-filtering
 - Pompom/Lumo creature companion (now separate package)
 
+[5.0.1]: https://github.com/codexstar69/pi-listen/releases/tag/v5.0.1
 [4.0.0]: https://github.com/codexstar69/pi-listen/releases/tag/v4.0.0
 [3.4.0]: https://github.com/codexstar69/pi-listen/releases/tag/v3.4.0
 [3.3.1]: https://github.com/codexstar69/pi-listen/releases/tag/v3.3.1

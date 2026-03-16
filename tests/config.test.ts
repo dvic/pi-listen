@@ -4,6 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import {
 	DEFAULT_CONFIG,
+	isLoopbackEndpoint,
 	loadConfigWithSource,
 	needsOnboarding,
 	saveConfig,
@@ -165,5 +166,121 @@ describe("saveConfig", () => {
 
 		expect(savedPath).toBe(path.join(cwd, ".pi", "settings.json"));
 		expect(saved.voice.scope).toBe("project");
+	});
+
+	test("strips deepgramApiKey from project-scoped saves", () => {
+		const cwd = makeTempDir();
+		const agentDir = path.join(cwd, "agent-home");
+		const config: VoiceConfig = {
+			...DEFAULT_CONFIG,
+			scope: "project",
+			deepgramApiKey: "secret-key-abc123",
+			onboarding: { completed: true, schemaVersion: DEFAULT_CONFIG.version },
+		};
+
+		const savedPath = saveConfig(config, "project", cwd, { agentDir });
+		const saved = JSON.parse(fs.readFileSync(savedPath, "utf8"));
+
+		expect(saved.voice.deepgramApiKey).toBeUndefined();
+	});
+
+	test("preserves deepgramApiKey in global-scoped saves", () => {
+		const cwd = makeTempDir();
+		const agentDir = path.join(cwd, "agent-home");
+		const config: VoiceConfig = {
+			...DEFAULT_CONFIG,
+			scope: "global",
+			deepgramApiKey: "secret-key-abc123",
+			onboarding: { completed: true, schemaVersion: DEFAULT_CONFIG.version },
+		};
+
+		const savedPath = saveConfig(config, "global", cwd, { agentDir });
+		const saved = JSON.parse(fs.readFileSync(savedPath, "utf8"));
+
+		expect(saved.voice.deepgramApiKey).toBe("secret-key-abc123");
+	});
+
+	test("strips non-loopback localEndpoint from project-scoped saves", () => {
+		const cwd = makeTempDir();
+		const agentDir = path.join(cwd, "agent-home");
+		const config: VoiceConfig = {
+			...DEFAULT_CONFIG,
+			scope: "project",
+			localEndpoint: "http://evil.com:8080",
+			onboarding: { completed: true, schemaVersion: DEFAULT_CONFIG.version },
+		};
+
+		const savedPath = saveConfig(config, "project", cwd, { agentDir });
+		const saved = JSON.parse(fs.readFileSync(savedPath, "utf8"));
+
+		expect(saved.voice.localEndpoint).toBeUndefined();
+	});
+
+	test("preserves loopback localEndpoint in project-scoped saves", () => {
+		const cwd = makeTempDir();
+		const agentDir = path.join(cwd, "agent-home");
+		const config: VoiceConfig = {
+			...DEFAULT_CONFIG,
+			scope: "project",
+			localEndpoint: "http://localhost:8080",
+			onboarding: { completed: true, schemaVersion: DEFAULT_CONFIG.version },
+		};
+
+		const savedPath = saveConfig(config, "project", cwd, { agentDir });
+		const saved = JSON.parse(fs.readFileSync(savedPath, "utf8"));
+
+		expect(saved.voice.localEndpoint).toBe("http://localhost:8080");
+	});
+
+	test("atomic write leaves no .tmp files after save", () => {
+		const cwd = makeTempDir();
+		const agentDir = path.join(cwd, "agent-home");
+		const config: VoiceConfig = {
+			...DEFAULT_CONFIG,
+			onboarding: { completed: true, schemaVersion: DEFAULT_CONFIG.version },
+		};
+
+		const savedPath = saveConfig(config, "global", cwd, { agentDir });
+		const dir = path.dirname(savedPath);
+		const tmpFiles = fs.readdirSync(dir).filter(f => f.endsWith(".tmp"));
+
+		expect(tmpFiles).toHaveLength(0);
+		expect(JSON.parse(fs.readFileSync(savedPath, "utf8"))).toBeDefined();
+	});
+});
+
+describe("isLoopbackEndpoint", () => {
+	test("accepts localhost", () => {
+		expect(isLoopbackEndpoint("http://localhost:8080")).toBe(true);
+	});
+
+	test("accepts 127.0.0.1", () => {
+		expect(isLoopbackEndpoint("http://127.0.0.1:9090")).toBe(true);
+	});
+
+	test("accepts ::1", () => {
+		expect(isLoopbackEndpoint("http://[::1]:8080")).toBe(true);
+	});
+
+	test("accepts https localhost", () => {
+		expect(isLoopbackEndpoint("https://localhost:8443")).toBe(true);
+	});
+
+	test("rejects remote hosts", () => {
+		expect(isLoopbackEndpoint("http://evil.com:8080")).toBe(false);
+	});
+
+	test("rejects private IPs", () => {
+		expect(isLoopbackEndpoint("http://192.168.1.1:8080")).toBe(false);
+	});
+
+	test("rejects non-http protocols", () => {
+		expect(isLoopbackEndpoint("ftp://localhost:21")).toBe(false);
+		expect(isLoopbackEndpoint("file://localhost/etc/passwd")).toBe(false);
+	});
+
+	test("rejects invalid URLs", () => {
+		expect(isLoopbackEndpoint("not-a-url")).toBe(false);
+		expect(isLoopbackEndpoint("")).toBe(false);
 	});
 });

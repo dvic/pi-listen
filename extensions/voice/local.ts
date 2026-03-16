@@ -15,6 +15,7 @@
 
 import type { ChildProcess } from "node:child_process";
 import type { VoiceConfig } from "./config";
+import { isLoopbackEndpoint } from "./config";
 import { SAMPLE_RATE, CHANNELS } from "./deepgram";
 
 // ─── Model catalog ───────────────────────────────────────────────────────────
@@ -560,6 +561,12 @@ export async function transcribeWithServer(
 	config: VoiceConfig,
 ): Promise<string> {
 	const endpoint = config.localEndpoint || DEFAULT_LOCAL_ENDPOINT;
+
+	// Security: refuse to send audio to non-loopback endpoints
+	if (!isLoopbackEndpoint(endpoint)) {
+		throw new Error(`Refusing to send audio to non-local endpoint: ${endpoint}. Only localhost/127.0.0.1/::1 allowed.`);
+	}
+
 	const model = config.localModel || DEFAULT_LOCAL_MODEL;
 	const language = config.language || "en";
 
@@ -734,12 +741,15 @@ export async function stopLocalSession(session: LocalSession, config: VoiceConfi
 			text = await transcribeWithServer(wavBuffer, config);
 		} else {
 			// In-process via sherpa-onnx (default, 120s timeout)
+			let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
 			text = await Promise.race([
 				transcribeInProcess(pcmData, config),
-				new Promise<never>((_, reject) =>
-					setTimeout(() => reject(new Error("Transcription timed out (120s)")), 120_000),
-				),
-			]);
+				new Promise<never>((_, reject) => {
+					timeoutHandle = setTimeout(() => reject(new Error("Transcription timed out (120s)")), 120_000);
+				}),
+			]).finally(() => {
+				if (timeoutHandle) clearTimeout(timeoutHandle);
+			});
 		}
 
 		// Recheck after await — abort may have fired during transcription.

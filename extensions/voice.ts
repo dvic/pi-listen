@@ -1762,11 +1762,13 @@ export default function (pi: ExtensionAPI) {
 		config = loaded.config;
 		configSource = loaded.source;
 
-		// Auto-capture DEEPGRAM_API_KEY from env into config
+		// Auto-capture DEEPGRAM_API_KEY from env into config (in-memory).
+		// Only persist to global config — never write secrets into project repos.
+		// serializeConfig() also strips deepgramApiKey from project saves as defense-in-depth.
 		if (process.env.DEEPGRAM_API_KEY && !config.deepgramApiKey) {
 			config.deepgramApiKey = process.env.DEEPGRAM_API_KEY;
-			if (configSource !== "default") {
-				saveConfig(config, config.scope, currentCwd);
+			if (configSource === "global") {
+				saveConfig(config, "global", currentCwd);
 			}
 		}
 

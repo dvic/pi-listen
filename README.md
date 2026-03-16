@@ -1,3 +1,5 @@
+[English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português](README.pt-BR.md) | [हिन्दी](README.hi.md)
+
 # pi-listen
 
 <p align="center">
@@ -8,6 +10,9 @@
 
 [![npm version](https://img.shields.io/npm/v/@codexstar/pi-listen.svg)](https://www.npmjs.com/package/@codexstar/pi-listen)
 [![license](https://img.shields.io/npm/l/@codexstar/pi-listen.svg)](https://github.com/codexstar69/pi-listen/blob/main/LICENSE)
+[![author](https://img.shields.io/badge/author-@baanditeagle-1DA1F2?logo=x&logoColor=white)](https://x.com/baanditeagle)
+
+> **v5.0.1 — Security patch** — API keys no longer leak into project config. Mic audio can't be redirected to remote servers via malicious repo settings. Shell injection fixed in API key onboarding. Config writes are now atomic. [Full changelog →](CHANGELOG.md)
 
 ---
 

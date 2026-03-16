@@ -213,9 +213,14 @@ export class VoiceSettingsPanel {
 				const dl = this.getDownloaded();
 				const item = dl[this.row];
 				if (item) {
+					const wasActive = this.p.config.localModel === item.id;
 					this.p.deleteModel(item.id);
-					if (this.p.config.localModel === item.id) {
+					if (wasActive) {
 						try { this.p.clearRecognizerCache(); } catch {}
+						// Pick another downloaded model, or clear selection
+						const remaining = this.p.getDownloadedModels();
+						this.p.config.localModel = remaining.length > 0 ? remaining[0]!.id : undefined;
+						this.save();
 					}
 					this.row = Math.max(0, Math.min(this.row, dl.length - 2));
 				}
@@ -291,7 +296,7 @@ export class VoiceSettingsPanel {
 
 	private renderModels(_w: number, iw: number): string[] {
 		const lines: string[] = [];
-		const currentId = this.p.config.localModel || "whisper-small";
+		const currentId = this.p.config.localModel || "parakeet-v3";
 		const downloadedMap = new Map(this.p.getDownloadedModels().map(d => [d.id, d.sizeMB]));
 
 		// Search bar
@@ -344,7 +349,7 @@ export class VoiceSettingsPanel {
 	private renderDownloaded(_w: number, _iw: number): string[] {
 		const lines: string[] = [];
 		const dl = this.getDownloaded();
-		const currentId = this.p.config.localModel || "whisper-small";
+		const currentId = this.p.config.localModel || "parakeet-v3";
 		const handy = scanHandyModels();
 		const handyNotImported = handy.filter(h => !h.imported);
 
@@ -678,7 +683,7 @@ export class VoiceSettingsPanel {
 	}
 
 	private getDownloaded(): { id: string; name: string; sizeMB: number; isCurrent: boolean }[] {
-		const currentId = this.p.config.localModel || "whisper-small";
+		const currentId = this.p.config.localModel || "parakeet-v3";
 		return this.p.getDownloadedModels().map(d => ({
 			...d,
 			name: LOCAL_MODELS.find(m => m.id === d.id)?.name || d.id,

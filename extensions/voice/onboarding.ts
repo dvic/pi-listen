@@ -9,6 +9,13 @@ import { detectDevice, autoRecommendModel, getModelFitness, formatDeviceSummary,
 
 type VoiceUiContext = ExtensionContext | ExtensionCommandContext;
 
+/** Escape a value for safe use inside single-quoted shell strings. */
+export function shellEscapeSingleQuoted(value: string): string {
+	// In single-quoted strings, the only special char is the single quote itself.
+	// Replace ' with '"'"' (end single-quote, double-quote a single-quote, restart single-quote).
+	return value.replace(/'/g, `'"'"'`);
+}
+
 export interface OnboardingResult {
 	config: VoiceConfig;
 	selectedScope: VoiceSettingsScope;
@@ -545,29 +552,41 @@ export async function runVoiceOnboarding(
 				const apiKey = await ctx.ui.input("DEEPGRAM_API_KEY");
 				if (apiKey && apiKey.trim().length > 10) {
 					const trimmedKey = apiKey.trim();
-					const fs = await import("node:fs");
-					const os = await import("node:os");
-					const home = os.homedir();
-					const envSecretsPath = `${home}/.env.secrets`;
-					const zshrcPath = `${home}/.zshrc`;
-					const exportLine = `export DEEPGRAM_API_KEY="${trimmedKey}"`;
 
-					const targetFile = fs.existsSync(envSecretsPath) ? envSecretsPath : zshrcPath;
-					const existing = fs.existsSync(targetFile) ? fs.readFileSync(targetFile, "utf-8") : "";
-
-					if (existing.includes("DEEPGRAM_API_KEY")) {
-						const updated = existing.replace(/^export DEEPGRAM_API_KEY=.*$/m, exportLine);
-						fs.writeFileSync(targetFile, updated);
+					// Reject keys with embedded newlines — these would corrupt shell files
+					if (trimmedKey.includes("\n") || trimmedKey.includes("\r")) {
+						ctx.ui.notify("Key contains newlines — rejected for safety.", "error");
 					} else {
-						fs.appendFileSync(targetFile, `\n${exportLine}\n`);
+						const fs = await import("node:fs");
+						const os = await import("node:os");
+						const home = os.homedir();
+						const envSecretsPath = `${home}/.env.secrets`;
+						const zshrcPath = `${home}/.zshrc`;
+						// Use single-quoted shell escaping to prevent injection
+						const exportLine = `export DEEPGRAM_API_KEY='${shellEscapeSingleQuoted(trimmedKey)}'`;
+
+						const targetFile = fs.existsSync(envSecretsPath) ? envSecretsPath : zshrcPath;
+						const existing = fs.existsSync(targetFile) ? fs.readFileSync(targetFile, "utf-8") : "";
+						const isNewFile = !fs.existsSync(targetFile);
+
+						if (existing.includes("DEEPGRAM_API_KEY")) {
+							const updated = existing.replace(/^export DEEPGRAM_API_KEY=.*$/m, exportLine);
+							fs.writeFileSync(targetFile, updated, { mode: 0o600 });
+						} else {
+							fs.appendFileSync(targetFile, `\n${exportLine}\n`);
+						}
+						// Ensure restrictive permissions on secrets files
+						if (isNewFile) {
+							try { fs.chmodSync(targetFile, 0o600); } catch {}
+						}
+
+						process.env.DEEPGRAM_API_KEY = trimmedKey;
+
+						ctx.ui.notify(
+							`API key saved to ${targetFile}\nActive in this session. New terminals will pick it up automatically.`,
+							"info",
+						);
 					}
-
-					process.env.DEEPGRAM_API_KEY = trimmedKey;
-
-					ctx.ui.notify(
-						`API key saved to ${targetFile}\nActive in this session. New terminals will pick it up automatically.`,
-						"info",
-					);
 				} else if (apiKey !== undefined && apiKey !== null) {
 					ctx.ui.notify(
 						"Key looks too short — skipped. You can set it later:\n  export DEEPGRAM_API_KEY=\"your-key\"",

@@ -1,6 +1,6 @@
 {
   "name": "@codexstar/pi-listen",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "Hold-to-talk voice input for Pi CLI — cloud streaming via Deepgram or fully offline with 19 local models",
   "type": "module",
   "keywords": [
@@ -22,7 +22,10 @@
     "cli",
     "coding-agent"
   ],
-  "author": "codexstar69",
+  "author": {
+    "name": "codexstar69",
+    "url": "https://x.com/baanditeagle"
+  },
   "license": "MIT",
   "homepage": "https://github.com/codexstar69/pi-listen#readme",
   "repository": {

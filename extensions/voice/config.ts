@@ -65,11 +65,12 @@ export const DEFAULT_CONFIG: VoiceConfig = {
 	},
 };
 
-export function readJsonFile(filePath: string): any {
+export function readJsonFile(filePath: string): Record<string, unknown> {
 	try {
 		if (!fs.existsSync(filePath)) return {};
 		return JSON.parse(fs.readFileSync(filePath, "utf8"));
-	} catch {
+	} catch (err) {
+		process.stderr.write(`[pi-voice] Warning: failed to read ${filePath}: ${err instanceof Error ? err.message : err}\n`);
 		return {};
 	}
 }
@@ -150,10 +151,29 @@ export function loadConfigWithSource(cwd: string, options: ConfigPathOptions = {
 	};
 }
 
+/** Check if a URL points to a loopback address (localhost/127.0.0.1/::1). */
+export function isLoopbackEndpoint(endpoint: string): boolean {
+	try {
+		const url = new URL(endpoint);
+		const proto = url.protocol;
+		if (proto !== "http:" && proto !== "https:") return false;
+		const host = url.hostname;
+		return host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]";
+	} catch {
+		return false;
+	}
+}
+
 function serializeConfig(config: VoiceConfig, scope: VoiceSettingsScope): VoiceConfig {
 	return {
 		...config,
 		scope,
+		// Never persist API keys into project-scoped config — prevents accidental repo commits
+		deepgramApiKey: scope === "project" ? undefined : config.deepgramApiKey,
+		// Only allow loopback endpoints in project config — prevents mic audio exfiltration
+		localEndpoint: (scope === "project" && config.localEndpoint && !isLoopbackEndpoint(config.localEndpoint))
+			? undefined
+			: config.localEndpoint,
 		onboarding: {
 			...config.onboarding,
 			schemaVersion: VOICE_CONFIG_VERSION,
@@ -171,7 +191,14 @@ export function saveConfig(
 	const settings = readJsonFile(settingsPath);
 	settings[SETTINGS_KEY] = serializeConfig(config, scope);
 	fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
-	fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
+	// Atomic write: temp file + rename prevents corruption from partial writes
+	const tmpPath = `${settingsPath}.${process.pid}.tmp`;
+	try {
+		fs.writeFileSync(tmpPath, JSON.stringify(settings, null, 2) + "\n");
+		fs.renameSync(tmpPath, settingsPath);
+	} finally {
+		try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch {}
+	}
 	return settingsPath;
 }
 
