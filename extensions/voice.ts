@@ -2298,321 +2298,86 @@ export default function (pi: ExtensionAPI) {
 	// ─── /voice-settings — show current config ─────────────────────────────
 
 	pi.registerCommand("voice-settings", {
-		description: "Show voice configuration and settings",
+		description: "Open voice settings panel — same as /voice-models",
 		handler: async (_args, cmdCtx) => {
 			ctx = cmdCtx;
-			const dgKey = resolveDeepgramApiKey(config);
-			const isLocal = config.backend === "local";
-			const model = isLocal ? (config.localModel || "whisper-small") : modelForLanguage(config.language);
-			const backendLabel = isLocal ? "local" : "deepgram";
-			const lines = [
-				"Voice settings:",
-				"",
-				`  backend:     ${backendLabel}`,
-				`  enabled:     ${config.enabled}`,
-				`  language:    ${languageDisplayName(config.language)}`,
-				`  model:       ${model}`,
-				`  scope:       ${config.scope}`,
-			];
-			if (isLocal) {
-				lines.push(`  endpoint:    ${config.localEndpoint ? config.localEndpoint : "in-process (sherpa-onnx)"}`);
-			} else {
-				lines.push(`  api key:     ${dgKey ? "set (" + dgKey.slice(0, 8) + "…)" : "NOT SET"}`);
-			}
-			lines.push(
-				`  onboarding:  ${config.onboarding.completed ? "complete" : "incomplete"}`,
-				`  state:       ${voiceState}`,
-				`  kitty:       ${kittyReleaseDetected ? "yes" : "no"}`,
-				"",
-				"Commands:",
-				"  /voice-setup      Reconfigure (backend, API key, language, scope)",
-				"  /voice-language   Change language (56+ supported)",
-				"  /voice-models     Manage local models (download, delete, switch)",
-				"  /voice test       Run diagnostics",
-				"  /voice on|off     Enable/disable",
-			);
-			cmdCtx.ui.notify(lines.join("\n"), "info");
+			cmdCtx.ui.notify("Use /voice-models to open the interactive settings panel.", "info");
 		},
 	});
 
-	// ─── /voice-models — interactive local model management ─────────────────
+	// ─── /voice-models — interactive settings panel ─────────────────────────
 
 	pi.registerCommand("voice-models", {
-		description: "Manage local voice models — interactive panel with fuzzy search",
-		handler: async (args, cmdCtx) => {
+		description: "Voice settings panel — models, language, backend, device",
+		handler: async (_args, cmdCtx) => {
 			ctx = cmdCtx;
 
-			const { Container, Input, Spacer, Text, fuzzyFilter, getEditorKeybindings } = await import("@mariozechner/pi-tui");
 			const { detectDevice, getModelFitness, formatDeviceSummary } = await import("./voice/device");
-			const { getDownloadedModels, deleteModel } = await import("./voice/model-download");
+			const { getDownloadedModels, deleteModel, ensureModelDownloaded } = await import("./voice/model-download");
 			const { isSherpaAvailable, clearRecognizerCache } = await import("./voice/sherpa-engine");
-
-			type Tab = "models" | "downloaded" | "device";
-			const TABS: { id: Tab; label: string }[] = [
-				{ id: "models", label: "All Models" },
-				{ id: "downloaded", label: "Downloaded" },
-				{ id: "device", label: "Device" },
-			];
+			const { VoiceSettingsPanel } = await import("./voice/settings-panel");
+			type PanelAction = import("./voice/settings-panel").PanelAction;
+			const { LANGUAGES } = await import("./voice/onboarding");
+			const { resolveDeepgramApiKey } = await import("./voice/deepgram");
 
 			const device = detectDevice();
-			const currentModelId = config.localModel || "whisper-small";
-
-			// Pre-compute model list with fitness
-			const allModels = LOCAL_MODELS.map(m => {
-				const fitness = getModelFitness(m, device);
-				return { ...m, fitness };
-			});
-			const fitnessOrder = { recommended: 0, compatible: 1, warning: 2, incompatible: 3 } as const;
-			allModels.sort((a, b) => {
-				const fitDiff = fitnessOrder[a.fitness] - fitnessOrder[b.fitness];
-				return fitDiff !== 0 ? fitDiff : b.sizeBytes - a.sizeBytes;
-			});
-
-			const result = await cmdCtx.ui.custom<{ action: string; modelId?: string } | undefined>((tui, theme, _kb, done) => {
-				const root = new Container();
-				const searchInput = new Input();
-				const contentContainer = new Container();
-
-				let activeTab: Tab = "models";
-				let selectedIndex = 0;
-				let filtered = allModels;
-
-				function fitnessbadge(f: string): string {
-					switch (f) {
-						case "recommended": return theme.fg("success", "[recommended]");
-						case "compatible": return theme.fg("accent", "[compatible]");
-						case "warning": return theme.fg("warning", "[may be slow]");
-						case "incompatible": return theme.fg("error", "[too large]");
-						default: return "";
-					}
-				}
-
-				function renderTabs() {
-					const parts = TABS.map(t => {
-						const label = ` ${t.label} `;
-						return t.id === activeTab
-							? theme.fg("accent", `[${label}]`)
-							: theme.fg("muted", ` ${label} `);
-					});
-					return parts.join(theme.fg("muted", "  "));
-				}
-
-				function getDownloaded() {
-					return getDownloadedModels().map(d => {
-						const model = LOCAL_MODELS.find(m => m.id === d.id);
-						return { ...d, name: model?.name || d.id, isCurrent: d.id === currentModelId };
-					});
-				}
-
-				function renderContent() {
-					contentContainer.clear();
-
-					if (activeTab === "models") {
-						const maxVisible = 14;
-						const start = Math.max(0, Math.min(selectedIndex - Math.floor(maxVisible / 2), filtered.length - maxVisible));
-						const end = Math.min(start + maxVisible, filtered.length);
-
-						for (let i = start; i < end; i++) {
-							const item = filtered[i];
-							if (!item) continue;
-							const isSelected = i === selectedIndex;
-							const isCurrent = item.id === currentModelId;
-							const prefix = isSelected ? theme.fg("accent", "→ ") : "  ";
-							const nameText = isSelected ? theme.fg("accent", item.name) : item.name;
-							const sizeText = theme.fg("muted", ` — ${item.size}`);
-							const badge = fitnessBadge(item.fitness);
-							const notes = theme.fg("muted", ` (${item.notes})`);
-							const check = isCurrent ? theme.fg("success", " ✓ active") : "";
-							contentContainer.addChild(new Text(`${prefix}${nameText}${sizeText} ${badge}${notes}${check}`, 0, 0));
-						}
-
-						if (filtered.length === 0) {
-							contentContainer.addChild(new Text(theme.fg("muted", "  No matching models"), 0, 0));
-						} else if (start > 0 || end < filtered.length) {
-							contentContainer.addChild(new Text(theme.fg("muted", `  (${selectedIndex + 1}/${filtered.length})`), 0, 0));
-						}
-
-						contentContainer.addChild(new Text("", 0, 0));
-						contentContainer.addChild(new Text(theme.fg("muted", "  Enter = activate model  |  ←→ = switch tab  |  Esc = close"), 0, 0));
-					} else if (activeTab === "downloaded") {
-						const dl = getDownloaded();
-						if (dl.length === 0) {
-							contentContainer.addChild(new Text(theme.fg("muted", "  No downloaded models yet."), 0, 0));
-							contentContainer.addChild(new Text(theme.fg("muted", "  Models download automatically on first recording."), 0, 0));
-						} else {
-							for (let i = 0; i < dl.length; i++) {
-								const d = dl[i]!;
-								const isSelected = i === selectedIndex;
-								const prefix = isSelected ? theme.fg("accent", "→ ") : "  ";
-								const nameText = isSelected ? theme.fg("accent", d.name) : d.name;
-								const sizeText = theme.fg("muted", ` — ${d.sizeMB} MB on disk`);
-								const badge = d.isCurrent ? theme.fg("success", " ✓ active") : "";
-								contentContainer.addChild(new Text(`${prefix}${nameText}${sizeText}${badge}`, 0, 0));
-							}
-						}
-
-						contentContainer.addChild(new Text("", 0, 0));
-						const hint = dl.length > 0
-							? "  Enter = activate  |  Del/d = delete  |  ←→ = switch tab  |  Esc = close"
-							: "  ←→ = switch tab  |  Esc = close";
-						contentContainer.addChild(new Text(theme.fg("muted", hint), 0, 0));
-					} else {
-						// Device tab
-						const gpuLabel = device.gpu.hasNvidia
-							? (device.gpu.gpuName || "NVIDIA")
-							: device.gpu.hasMetal ? "Apple Silicon (Metal)" : "none";
-
-						contentContainer.addChild(new Text(`  Platform     ${device.platform} ${device.arch}`, 0, 0));
-						contentContainer.addChild(new Text(`  RAM          ${(device.totalRamMB / 1024).toFixed(1)} GB total, ${(device.freeRamMB / 1024).toFixed(1)} GB free`, 0, 0));
-						contentContainer.addChild(new Text(`  CPU          ${device.cpuCores} cores — ${device.cpuModel}`, 0, 0));
-						contentContainer.addChild(new Text(`  GPU          ${gpuLabel}`, 0, 0));
-						if (device.gpu.vramMB) {
-							contentContainer.addChild(new Text(`  VRAM         ${device.gpu.vramMB} MB`, 0, 0));
-						}
-						if (device.isRaspberryPi) {
-							contentContainer.addChild(new Text(`  Raspberry Pi ${device.piModel || "yes"}`, 0, 0));
-						}
-						contentContainer.addChild(new Text(`  Container    ${device.isContainer ? "yes" : "no"}`, 0, 0));
-						contentContainer.addChild(new Text(`  Locale       ${device.systemLocale}`, 0, 0));
-						contentContainer.addChild(new Text(`  sherpa-onnx  ${isSherpaAvailable() ? "available" : "not initialized"}`, 0, 0));
-						contentContainer.addChild(new Text("", 0, 0));
-						contentContainer.addChild(new Text(theme.fg("muted", "  ←→ = switch tab  |  Esc = close"), 0, 0));
-					}
-
-					tui.requestRender();
-				}
-
-				// Alias for the badge function used inside renderContent
-				function fitnessBadge(f: string): string { return fitnessbadge(f); }
-
-				function filterModels(query: string) {
-					if (!query) {
-						filtered = allModels;
-					} else {
-						filtered = fuzzyFilter(allModels, query, (item) => `${item.name} ${item.id} ${item.notes} ${item.langSupport}`);
-					}
-					selectedIndex = Math.min(selectedIndex, Math.max(0, filtered.length - 1));
-					renderContent();
-				}
-
-				function switchTab(direction: -1 | 1) {
-					const currentIdx = TABS.findIndex(t => t.id === activeTab);
-					const nextIdx = (currentIdx + direction + TABS.length) % TABS.length;
-					activeTab = TABS[nextIdx]!.id;
-					selectedIndex = 0;
-					searchInput.setValue?.("") ?? void 0;
-					renderHeader();
-					renderContent();
-				}
-
-				function renderHeader() {
-					// Rebuild header each time tab changes
-					root.clear();
-					root.addChild(new Spacer(1));
-					root.addChild(new Text(theme.fg("accent", `Voice Models (${formatDeviceSummary(device)})`), 1, 0));
-					root.addChild(new Text(renderTabs(), 1, 0));
-					root.addChild(new Spacer(1));
-					if (activeTab === "models") {
-						root.addChild(new Text(theme.fg("muted", "Type to search, ↑↓ navigate, ←→ switch tab"), 1, 0));
-						root.addChild(searchInput);
-						root.addChild(new Spacer(1));
-					}
-					root.addChild(contentContainer);
-					root.addChild(new Spacer(1));
-				}
-
-				// Initial render
-				renderHeader();
-				renderContent();
-
-				const kb = getEditorKeybindings();
-				(root as any).handleInput = (keyData: string) => {
-					// Left/Right arrow — switch tabs
-					if (keyData === "\x1b[D" || keyData === "\x1bOD") { // Left arrow
-						switchTab(-1);
-						return;
-					}
-					if (keyData === "\x1b[C" || keyData === "\x1bOC") { // Right arrow
-						switchTab(1);
-						return;
-					}
-
-					if (kb.matches(keyData, "selectUp")) {
-						const max = activeTab === "downloaded" ? getDownloaded().length : filtered.length;
-						if (max === 0) return;
-						selectedIndex = selectedIndex === 0 ? max - 1 : selectedIndex - 1;
-						renderContent();
-					} else if (kb.matches(keyData, "selectDown")) {
-						const max = activeTab === "downloaded" ? getDownloaded().length : filtered.length;
-						if (max === 0) return;
-						selectedIndex = selectedIndex === max - 1 ? 0 : selectedIndex + 1;
-						renderContent();
-					} else if (kb.matches(keyData, "selectConfirm") || keyData === "\n") {
-						if (activeTab === "models") {
-							const item = filtered[selectedIndex];
-							if (item) done({ action: "switch", modelId: item.id });
-						} else if (activeTab === "downloaded") {
-							const dl = getDownloaded();
-							const item = dl[selectedIndex];
-							if (item) done({ action: "switch", modelId: item.id });
-						}
-					} else if (activeTab === "downloaded" && (keyData === "d" || keyData === "\x1b[3~")) {
-						// 'd' key or Delete key — delete model
-						const dl = getDownloaded();
-						const item = dl[selectedIndex];
-						if (item) done({ action: "delete", modelId: item.id });
-					} else if (kb.matches(keyData, "selectCancel")) {
-						done(undefined);
-					} else if (activeTab === "models") {
-						searchInput.handleInput(keyData);
-						filterModels(searchInput.getValue());
-					}
-				};
-
-				Object.defineProperty(root, "focused", {
-					get: () => (searchInput as any).focused,
-					set: (v: boolean) => { (searchInput as any).focused = v; },
-				});
-
-				return root;
+			const panel = new VoiceSettingsPanel({
+				config,
+				device,
+				cwd: currentCwd,
+				getModelFitness,
+				getDownloadedModels,
+				deleteModel,
+				isSherpaAvailable,
+				formatDeviceSummary,
+				saveConfig: (cfg, scope, cwd) => saveConfig(cfg, scope, cwd),
+				clearRecognizerCache: () => { try { clearRecognizerCache(); } catch {} },
+				resolveApiKey: () => resolveDeepgramApiKey(config) ?? undefined,
+				deepgramLanguages: LANGUAGES.map(l => ({ name: l.name, code: l.code, popular: l.popular })),
 			});
 
-			// Handle result
-			if (!result) return;
+			const result = await cmdCtx.ui.custom<PanelAction>(
+				(_tui, _theme, _kb, done) => {
+					panel.onClose = (action) => done(action);
+					return panel;
+				},
+				{
+					overlay: true,
+					overlayOptions: {
+						width: "70%",
+						minWidth: 44,
+						maxHeight: "80%",
+						anchor: "center",
+					},
+				},
+			);
 
-			if (result.action === "switch" && result.modelId) {
-				const picked = LOCAL_MODELS.find(m => m.id === result.modelId);
-				if (!picked) return;
-
-				if (config.localModel !== picked.id) {
-					try { clearRecognizerCache(); } catch {}
-				}
-
-				config.localModel = picked.id;
-				config.backend = "local";
-				config.localEndpoint = undefined;
-				saveConfig(config, config.scope === "project" ? "project" : "global", currentCwd);
-
-				const fitness = getModelFitness(picked, device);
-				const badge = fitness === "recommended" ? " (recommended)" :
-					fitness === "compatible" ? "" :
-					fitness === "warning" ? " (may be slow)" : " (too large for this device)";
-
-				cmdCtx.ui.notify(
-					`Switched to ${picked.name}${badge}\nModel will download automatically on first recording.`,
-					fitness === "incompatible" ? "warning" : "info",
-				);
-			} else if (result.action === "delete" && result.modelId) {
-				const modelId = result.modelId;
-				if (deleteModel(modelId)) {
-					if (config.localModel === modelId) {
-						try { clearRecognizerCache(); } catch {}
+			// Post-close: handle download action
+			if (result?.type === "download" && result.modelId) {
+				const model = LOCAL_MODELS.find(m => m.id === result.modelId);
+				if (model) {
+					cmdCtx.ui.notify(`Downloading ${model.name} (${model.size})…`, "info");
+					try {
+						await ensureModelDownloaded(
+							model.id,
+							model.sherpaModel.downloadUrls,
+							model.sizeBytes,
+							(progress) => {
+								const pct = Math.round((progress.downloadedBytes / progress.totalBytes) * 100);
+								cmdCtx.ui.notify(`Downloading ${model.name}… ${pct}% (${progress.file})`, "info");
+							},
+						);
+						cmdCtx.ui.notify(`${model.name} downloaded and ready.`, "info");
+					} catch (err: any) {
+						cmdCtx.ui.notify(`Download failed: ${err.message || err}`, "error");
 					}
-					cmdCtx.ui.notify(`Deleted ${modelId}.`, "info");
-				} else {
-					cmdCtx.ui.notify(`Failed to delete ${modelId}.`, "error");
 				}
 			}
+
+			// Sync voice state after panel changes
+			if (config.enabled) { setupHoldToTalk(); }
+			else { voiceCleanup(); }
+			updateVoiceStatus();
 		},
 	});
 

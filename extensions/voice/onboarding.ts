@@ -22,9 +22,9 @@ export interface FirstRunDecision {
 // ─── Nova-3 supported languages for live streaming ──────────────────────
 // All verified for streaming support. "multi" removed — not supported for live.
 
-interface LangEntry { name: string; code: string; popular?: boolean; model?: string; }
+export interface LangEntry { name: string; code: string; popular?: boolean; model?: string; }
 
-const LANGUAGES: LangEntry[] = [
+export const LANGUAGES: LangEntry[] = [
 	// Top popular — shown first in picker
 	{ name: "English", code: "en", popular: true },
 	{ name: "Hindi", code: "hi", popular: true },
