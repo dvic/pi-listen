@@ -45,6 +45,10 @@ export interface LocalModelInfo {
 	tier: "edge" | "standard" | "heavy";
 	/** Preferred model — best-in-class for its language/use case. Only these get [recommended]. */
 	preferred?: boolean;
+	/** Accuracy rating 1-5 (5 = best). Based on published WER benchmarks. */
+	accuracy: 1 | 2 | 3 | 4 | 5;
+	/** Speed rating 1-5 (5 = fastest). Based on real-time factor and latency benchmarks. */
+	speed: 1 | 2 | 3 | 4 | 5;
 	/** sherpa-onnx model configuration — file paths and download URLs */
 	sherpaModel: SherpaModelConfig;
 }
@@ -84,7 +88,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	// ── Moonshine v2 (moonshine-ai) — English only, uses encoder + mergedDecoder ──
 	{
 		id: "moonshine-v2-tiny", name: "Moonshine v2 Tiny", size: "~43 MB", sizeBytes: 45_088_768, runtimeRamMB: 110,
-		notes: "Streaming, ultra-fast, English only", langSupport: "english-only", tier: "edge", preferred: true,
+		notes: "Ultra-fast, English only, 34ms latency", langSupport: "english-only", tier: "edge", preferred: true, accuracy: 2, speed: 5,
 		sherpaModel: {
 			type: "moonshine",
 			files: { encoder: "encoder_model.ort", mergedDecoder: "decoder_model_merged.ort", tokens: "tokens.txt" },
@@ -98,7 +102,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	// ── Moonshine v1 (Useful Sensors) — English only, uses preprocessor+encoder+uncachedDecoder+cachedDecoder ──
 	{
 		id: "moonshine-tiny", name: "Moonshine Tiny", size: "~124 MB", sizeBytes: 130_023_424, runtimeRamMB: 310,
-		notes: "Ultra-fast, 5x less compute than Whisper, English only", langSupport: "english-only", tier: "edge",
+		notes: "WER ~12%, 5x faster than Whisper Tiny, English only", langSupport: "english-only", tier: "edge", accuracy: 2, speed: 5,
 		sherpaModel: {
 			type: "moonshine",
 			files: { preprocessor: "preprocess.onnx", encoder: "encode.int8.onnx", uncachedDecoder: "uncached_decode.int8.onnx", cachedDecoder: "cached_decode.int8.onnx", tokens: "tokens.txt" },
@@ -113,7 +117,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	{
 		id: "moonshine-base", name: "Moonshine Base", size: "~287 MB", sizeBytes: 300_940_288, runtimeRamMB: 720,
-		notes: "Fast and accurate, edge-optimized, English only", langSupport: "english-only", tier: "standard",
+		notes: "Very fast, English only, handles accents well", langSupport: "english-only", tier: "standard", accuracy: 3, speed: 5,
 		sherpaModel: {
 			type: "moonshine",
 			files: { preprocessor: "preprocess.onnx", encoder: "encode.int8.onnx", uncachedDecoder: "uncached_decode.int8.onnx", cachedDecoder: "cached_decode.int8.onnx", tokens: "tokens.txt" },
@@ -129,7 +133,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	// ── Whisper (OpenAI) — multilingual, 57 languages ─────────────────────
 	{
 		id: "whisper-small", name: "Whisper Small", size: "~375 MB", sizeBytes: 393_216_000, runtimeRamMB: 940,
-		notes: "Good balance of speed and accuracy, 57 languages", langSupport: "whisper", tier: "standard",
+		notes: "WER 8.6%, 57 languages, fast and fairly accurate", langSupport: "whisper", tier: "standard", accuracy: 3, speed: 4,
 		sherpaModel: {
 			type: "whisper",
 			files: { encoder: "small-encoder.int8.onnx", decoder: "small-decoder.int8.onnx", tokens: "small-tokens.txt" },
@@ -142,7 +146,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	{
 		id: "whisper-medium", name: "Whisper Medium", size: "~946 MB", sizeBytes: 991_952_896, runtimeRamMB: 2365,
-		notes: "Better accuracy, moderate speed, 57 languages", langSupport: "whisper", tier: "standard",
+		notes: "WER ~7.5%, 57 languages, good accuracy, medium speed", langSupport: "whisper", tier: "standard", accuracy: 4, speed: 3,
 		sherpaModel: {
 			type: "whisper",
 			files: { encoder: "medium-encoder.int8.onnx", decoder: "medium-decoder.int8.onnx", tokens: "medium-tokens.txt" },
@@ -155,7 +159,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	{
 		id: "whisper-turbo", name: "Whisper Turbo", size: "~1.0 GB", sizeBytes: 1_087_373_312, runtimeRamMB: 2590,
-		notes: "Fast and accurate, 57 languages", langSupport: "whisper", tier: "heavy",
+		notes: "WER ~7%, 57 languages, balanced accuracy and speed", langSupport: "whisper", tier: "heavy", accuracy: 4, speed: 2,
 		sherpaModel: {
 			type: "whisper",
 			files: { encoder: "turbo-encoder.int8.onnx", decoder: "turbo-decoder.int8.onnx", tokens: "turbo-tokens.txt" },
@@ -168,7 +172,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	{
 		id: "whisper-large", name: "Whisper Large v3", size: "~1.8 GB", sizeBytes: 1_863_319_552, runtimeRamMB: 4440,
-		notes: "Best accuracy, slowest, 57 languages", langSupport: "whisper", tier: "heavy",
+		notes: "WER 7.4%, best Whisper, 57 languages, slow", langSupport: "whisper", tier: "heavy", accuracy: 4, speed: 1,
 		sherpaModel: {
 			type: "whisper",
 			files: { encoder: "large-v3-encoder.int8.onnx", decoder: "large-v3-decoder.int8.onnx", tokens: "large-v3-tokens.txt" },
@@ -182,7 +186,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	// ── Moonshine v2 language-specialized (csukuangfj2) — uses encoder+mergedDecoder ──
 	{
 		id: "moonshine-v2-tiny-ja", name: "Moonshine v2 Tiny Japanese", size: "~69 MB", sizeBytes: 72_351_744, runtimeRamMB: 175,
-		notes: "Japanese-specialized, ultra-fast", langSupport: "single-ja", tier: "edge",
+		notes: "Japanese-specialized, ultra-fast", langSupport: "single-ja", tier: "edge", accuracy: 3, speed: 5,
 		sherpaModel: {
 			type: "moonshine",
 			files: { encoder: "encoder_model.ort", mergedDecoder: "decoder_model_merged.ort", tokens: "tokens.txt" },
@@ -195,7 +199,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	{
 		id: "moonshine-v2-tiny-ko", name: "Moonshine v2 Tiny Korean", size: "~69 MB", sizeBytes: 72_351_744, runtimeRamMB: 175,
-		notes: "Korean-specialized, ultra-fast", langSupport: "single-ko", tier: "edge",
+		notes: "Korean-specialized, ultra-fast", langSupport: "single-ko", tier: "edge", accuracy: 3, speed: 5,
 		sherpaModel: {
 			type: "moonshine",
 			files: { encoder: "encoder_model.ort", mergedDecoder: "decoder_model_merged.ort", tokens: "tokens.txt" },
@@ -208,7 +212,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	{
 		id: "moonshine-v2-base-ar", name: "Moonshine v2 Base Arabic", size: "~135 MB", sizeBytes: 141_557_760, runtimeRamMB: 340,
-		notes: "Arabic-specialized", langSupport: "single-ar", tier: "edge",
+		notes: "Arabic-specialized", langSupport: "single-ar", tier: "edge", accuracy: 3, speed: 5,
 		sherpaModel: {
 			type: "moonshine",
 			files: { encoder: "encoder_model.ort", mergedDecoder: "decoder_model_merged.ort", tokens: "tokens.txt" },
@@ -221,7 +225,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	{
 		id: "moonshine-v2-base-zh", name: "Moonshine v2 Base Chinese", size: "~135 MB", sizeBytes: 141_557_760, runtimeRamMB: 340,
-		notes: "Chinese-specialized", langSupport: "single-zh", tier: "edge",
+		notes: "Chinese-specialized", langSupport: "single-zh", tier: "edge", accuracy: 3, speed: 5,
 		sherpaModel: {
 			type: "moonshine",
 			files: { encoder: "encoder_model.ort", mergedDecoder: "decoder_model_merged.ort", tokens: "tokens.txt" },
@@ -234,7 +238,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	{
 		id: "moonshine-v2-base-ja", name: "Moonshine v2 Base Japanese", size: "~135 MB", sizeBytes: 141_557_760, runtimeRamMB: 340,
-		notes: "Japanese-specialized", langSupport: "single-ja", tier: "edge",
+		notes: "Japanese-specialized", langSupport: "single-ja", tier: "edge", accuracy: 3, speed: 4,
 		sherpaModel: {
 			type: "moonshine",
 			files: { encoder: "encoder_model.ort", mergedDecoder: "decoder_model_merged.ort", tokens: "tokens.txt" },
@@ -247,7 +251,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	{
 		id: "moonshine-v2-base-uk", name: "Moonshine v2 Base Ukrainian", size: "~135 MB", sizeBytes: 141_557_760, runtimeRamMB: 340,
-		notes: "Ukrainian-specialized", langSupport: "single-uk", tier: "edge",
+		notes: "Ukrainian-specialized", langSupport: "single-uk", tier: "edge", accuracy: 3, speed: 4,
 		sherpaModel: {
 			type: "moonshine",
 			files: { encoder: "encoder_model.ort", mergedDecoder: "decoder_model_merged.ort", tokens: "tokens.txt" },
@@ -260,7 +264,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	{
 		id: "moonshine-v2-base-vi", name: "Moonshine v2 Base Vietnamese", size: "~135 MB", sizeBytes: 141_557_760, runtimeRamMB: 340,
-		notes: "Vietnamese-specialized", langSupport: "single-vi", tier: "edge",
+		notes: "Vietnamese-specialized", langSupport: "single-vi", tier: "edge", accuracy: 3, speed: 4,
 		sherpaModel: {
 			type: "moonshine",
 			files: { encoder: "encoder_model.ort", mergedDecoder: "decoder_model_merged.ort", tokens: "tokens.txt" },
@@ -273,7 +277,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	{
 		id: "moonshine-v2-base-es", name: "Moonshine v2 Base Spanish", size: "~63 MB", sizeBytes: 66_060_288, runtimeRamMB: 160,
-		notes: "Spanish-specialized", langSupport: "single-es", tier: "edge",
+		notes: "Spanish-specialized", langSupport: "single-es", tier: "edge", accuracy: 3, speed: 5,
 		sherpaModel: {
 			type: "moonshine",
 			files: { encoder: "encoder_model.ort", mergedDecoder: "decoder_model_merged.ort", tokens: "tokens.txt" },
@@ -287,7 +291,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	// ── SenseVoice (Alibaba/FunAudioLLM) — 5 languages ───────────────────
 	{
 		id: "sensevoice-small", name: "SenseVoice Small", size: "~228 MB", sizeBytes: 239_075_328, runtimeRamMB: 570,
-		notes: "5 languages (zh/en/ja/ko/yue), ultra-fast batch", langSupport: "sensevoice", tier: "edge", preferred: true,
+		notes: "5 languages (zh/en/ja/ko/yue), ultra-fast batch", langSupport: "sensevoice", tier: "edge", preferred: true, accuracy: 3, speed: 5,
 		sherpaModel: {
 			type: "sense_voice",
 			files: { model: "model.int8.onnx", tokens: "tokens.txt" },
@@ -300,7 +304,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	// ── GigaAM v3 (Sber/Salute) — Russian only, NeMo CTC ────────────────
 	{
 		id: "gigaam-v3", name: "GigaAM v3", size: "~225 MB", sizeBytes: 235_929_600, runtimeRamMB: 560,
-		notes: "Russian only, 50% lower WER than Whisper on Russian", langSupport: "russian-only", tier: "edge", preferred: true,
+		notes: "Russian only, fast and accurate", langSupport: "russian-only", tier: "edge", preferred: true, accuracy: 4, speed: 4,
 		sherpaModel: {
 			type: "nemo_ctc",
 			files: { model: "model.int8.onnx", tokens: "tokens.txt" },
@@ -313,7 +317,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	// ── Parakeet (NVIDIA NeMo) — transducer architecture ─────────────────
 	{
 		id: "parakeet-v2", name: "Parakeet TDT v2", size: "~661 MB", sizeBytes: 693_109_760, runtimeRamMB: 1650,
-		notes: "English only, NVIDIA NeMo transducer", langSupport: "english-only", tier: "standard",
+		notes: "WER 6.0%, English only, best English accuracy", langSupport: "english-only", tier: "standard", preferred: true, accuracy: 5, speed: 4,
 		sherpaModel: {
 			type: "transducer",
 			files: { encoder: "encoder.int8.onnx", decoder: "decoder.int8.onnx", joiner: "joiner.int8.onnx", tokens: "tokens.txt" },
@@ -327,7 +331,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	{
 		id: "parakeet-v3", name: "Parakeet TDT v3", size: "~671 MB", sizeBytes: 703_594_496, runtimeRamMB: 1675,
-		notes: "Multilingual, auto language detection, NVIDIA NeMo", langSupport: "parakeet-multi", tier: "standard", preferred: true,
+		notes: "WER 6.3%, 25 languages, auto-detect, fast and accurate", langSupport: "parakeet-multi", tier: "standard", preferred: true, accuracy: 4, speed: 4,
 		sherpaModel: {
 			type: "transducer",
 			files: { encoder: "encoder.int8.onnx", decoder: "decoder.int8.onnx", joiner: "joiner.int8.onnx", tokens: "tokens.txt" },

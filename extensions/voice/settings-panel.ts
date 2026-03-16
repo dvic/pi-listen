@@ -316,11 +316,13 @@ export class VoiceSettingsPanel {
 			const size = dim(` — ${m.size}`);
 			const badge = this.fitnessBadge(m.fitness);
 			const useShort = iw < 50;
-			const notes = useShort ? "" : dim(` (${m.notes})`);
+			const accBar = this.ratingBar(m.accuracy, "A");
+			const spdBar = this.ratingBar(m.speed, "S");
+			const metrics = useShort ? "" : ` ${accBar} ${spdBar}`;
 			const status = isCurrent ? green(" ● active")
 				: isDl ? green(" ✓ ready")
-				: dim(" ○ not downloaded");
-			lines.push(`${prefix}${name}${size} ${badge}${notes}${status}`);
+				: dim(" ○");
+			lines.push(`${prefix}${name}${size} ${badge}${metrics}${status}`);
 		}
 
 		if (total === 0) {
@@ -689,6 +691,12 @@ export class VoiceSettingsPanel {
 		}
 		const entry = allLangs.find(l => l.code === code);
 		return entry ? `${entry.name} (${code})` : code;
+	}
+
+	private ratingBar(value: 1 | 2 | 3 | 4 | 5, label: string): string {
+		const filled = "█".repeat(value);
+		const empty = dim("░".repeat(5 - value));
+		return dim(`${label}:`) + filled + empty;
 	}
 
 	private fitnessBadge(f: ModelFitness): string {
