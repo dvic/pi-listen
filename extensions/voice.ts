@@ -2295,90 +2295,91 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
-	// ─── /voice-settings — show current config ─────────────────────────────
+	// ─── Settings panel (shared handler) ────────────────────────────────────
 
-	pi.registerCommand("voice-settings", {
-		description: "Open voice settings panel — same as /voice-models",
-		handler: async (_args, cmdCtx) => {
-			ctx = cmdCtx;
-			cmdCtx.ui.notify("Use /voice-models to open the interactive settings panel.", "info");
-		},
-	});
+	async function openSettingsPanel(cmdCtx: ExtensionCommandContext, initialTab?: number) {
+		ctx = cmdCtx;
 
-	// ─── /voice-models — interactive settings panel ─────────────────────────
+		const { detectDevice, getModelFitness, formatDeviceSummary } = await import("./voice/device");
+		const { getDownloadedModels, deleteModel, ensureModelDownloaded } = await import("./voice/model-download");
+		const { isSherpaAvailable, clearRecognizerCache } = await import("./voice/sherpa-engine");
+		const { VoiceSettingsPanel } = await import("./voice/settings-panel");
+		type PanelAction = import("./voice/settings-panel").PanelAction;
+		const { LANGUAGES } = await import("./voice/onboarding");
+		const { resolveDeepgramApiKey } = await import("./voice/deepgram");
 
-	pi.registerCommand("voice-models", {
-		description: "Voice settings panel — models, language, backend, device",
-		handler: async (_args, cmdCtx) => {
-			ctx = cmdCtx;
+		const device = detectDevice();
+		const panel = new VoiceSettingsPanel({
+			config,
+			device,
+			cwd: currentCwd,
+			getModelFitness,
+			getDownloadedModels,
+			deleteModel,
+			isSherpaAvailable,
+			formatDeviceSummary,
+			saveConfig: (cfg, scope, cwd) => saveConfig(cfg, scope, cwd),
+			clearRecognizerCache: () => { try { clearRecognizerCache(); } catch {} },
+			resolveApiKey: () => resolveDeepgramApiKey(config) ?? undefined,
+			deepgramLanguages: LANGUAGES.map(l => ({ name: l.name, code: l.code, popular: l.popular })),
+		}, initialTab);
 
-			const { detectDevice, getModelFitness, formatDeviceSummary } = await import("./voice/device");
-			const { getDownloadedModels, deleteModel, ensureModelDownloaded } = await import("./voice/model-download");
-			const { isSherpaAvailable, clearRecognizerCache } = await import("./voice/sherpa-engine");
-			const { VoiceSettingsPanel } = await import("./voice/settings-panel");
-			type PanelAction = import("./voice/settings-panel").PanelAction;
-			const { LANGUAGES } = await import("./voice/onboarding");
-			const { resolveDeepgramApiKey } = await import("./voice/deepgram");
-
-			const device = detectDevice();
-			const panel = new VoiceSettingsPanel({
-				config,
-				device,
-				cwd: currentCwd,
-				getModelFitness,
-				getDownloadedModels,
-				deleteModel,
-				isSherpaAvailable,
-				formatDeviceSummary,
-				saveConfig: (cfg, scope, cwd) => saveConfig(cfg, scope, cwd),
-				clearRecognizerCache: () => { try { clearRecognizerCache(); } catch {} },
-				resolveApiKey: () => resolveDeepgramApiKey(config) ?? undefined,
-				deepgramLanguages: LANGUAGES.map(l => ({ name: l.name, code: l.code, popular: l.popular })),
-			});
-
-			const result = await cmdCtx.ui.custom<PanelAction>(
-				(_tui, _theme, _kb, done) => {
-					panel.onClose = (action) => done(action);
-					return panel;
+		const result = await cmdCtx.ui.custom<PanelAction>(
+			(_tui, _theme, _kb, done) => {
+				panel.onClose = (action) => done(action);
+				return panel;
+			},
+			{
+				overlay: true,
+				overlayOptions: {
+					width: "70%",
+					minWidth: 44,
+					maxHeight: "80%",
+					anchor: "center",
 				},
-				{
-					overlay: true,
-					overlayOptions: {
-						width: "70%",
-						minWidth: 44,
-						maxHeight: "80%",
-						anchor: "center",
-					},
-				},
-			);
+			},
+		);
 
-			// Post-close: handle download action
-			if (result?.type === "download" && result.modelId) {
-				const model = LOCAL_MODELS.find(m => m.id === result.modelId);
-				if (model) {
-					cmdCtx.ui.notify(`Downloading ${model.name} (${model.size})…`, "info");
-					try {
-						await ensureModelDownloaded(
-							model.id,
-							model.sherpaModel.downloadUrls,
-							model.sizeBytes,
-							(progress) => {
-								const pct = Math.round((progress.downloadedBytes / progress.totalBytes) * 100);
-								cmdCtx.ui.notify(`Downloading ${model.name}… ${pct}% (${progress.file})`, "info");
-							},
-						);
-						cmdCtx.ui.notify(`${model.name} downloaded and ready.`, "info");
-					} catch (err: any) {
-						cmdCtx.ui.notify(`Download failed: ${err.message || err}`, "error");
-					}
+		// Post-close: handle download action
+		if (result?.type === "download" && result.modelId) {
+			const model = LOCAL_MODELS.find(m => m.id === result.modelId);
+			if (model) {
+				cmdCtx.ui.notify(`Downloading ${model.name} (${model.size})…`, "info");
+				try {
+					await ensureModelDownloaded(
+						model.id,
+						model.sherpaModel.downloadUrls,
+						model.sizeBytes,
+						(progress) => {
+							const pct = Math.round((progress.downloadedBytes / progress.totalBytes) * 100);
+							cmdCtx.ui.notify(`Downloading ${model.name}… ${pct}% (${progress.file})`, "info");
+						},
+					);
+					cmdCtx.ui.notify(`${model.name} downloaded and ready.`, "info");
+				} catch (err: any) {
+					cmdCtx.ui.notify(`Download failed: ${err.message || err}`, "error");
 				}
 			}
+		}
 
-			// Sync voice state after panel changes
-			if (config.enabled) { setupHoldToTalk(); }
-			else { voiceCleanup(); }
-			updateVoiceStatus();
-		},
+		// Sync voice state after panel changes
+		if (config.enabled) { setupHoldToTalk(); }
+		else { voiceCleanup(); }
+		updateVoiceStatus();
+	}
+
+	// ─── /voice-settings — unified pi-listen settings panel ─────────────
+
+	pi.registerCommand("voice-settings", {
+		description: "Open pi-listen settings — backend, models, language, device",
+		handler: async (_args, cmdCtx) => openSettingsPanel(cmdCtx),
+	});
+
+	// ─── /voice-models — opens settings panel on Models tab ─────────────
+
+	pi.registerCommand("voice-models", {
+		description: "Manage local voice models (opens settings panel)",
+		handler: async (_args, cmdCtx) => openSettingsPanel(cmdCtx, 1),
 	});
 
 }

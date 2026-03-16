@@ -73,7 +73,10 @@ export class VoiceSettingsPanel {
 	private cw?: number;
 	private cl?: string[];
 
-	constructor(private p: PanelDeps) {
+	constructor(private p: PanelDeps, initialTab?: number) {
+		if (initialTab !== undefined && initialTab >= 0 && initialTab < TAB_IDS.length) {
+			this.tab = initialTab;
+		}
 		this.rebuildModels();
 	}
 
@@ -90,7 +93,7 @@ export class VoiceSettingsPanel {
 		const { config, device } = this.p;
 
 		// Header
-		lines.push(t(`  ${bold("Voice Settings")}  ${dim(this.p.formatDeviceSummary(device))}`));
+		lines.push(t(`  ${bold("pi-listen")}  ${dim(this.p.formatDeviceSummary(device))}`));
 		lines.push(t(dim("  " + "─".repeat(Math.min(iw, 50)))));
 
 		// Tab bar
