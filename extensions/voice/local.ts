@@ -351,65 +351,10 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 			},
 		},
 	},
-	// ── SenseVoice (Alibaba/FunAudioLLM) — 5 languages ───────────────────
-	{
-		id: "sensevoice-small", name: "SenseVoice Small", size: "~228 MB", sizeBytes: 239_075_328, runtimeRamMB: 570,
-		notes: "5 languages (zh/en/ja/ko/yue), ultra-fast batch", langSupport: "sensevoice", tier: "edge", preferred: true, accuracy: 3, speed: 5,
-		sherpaModel: {
-			type: "sense_voice",
-			files: { model: "model.int8.onnx", tokens: "tokens.txt" },
-			downloadUrls: {
-				model: hf1("sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17", "model.int8.onnx"),
-				tokens: hf1("sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17", "tokens.txt"),
-			},
-		},
-	},
-	// ── GigaAM v3 (Sber/Salute) — Russian only, NeMo CTC ────────────────
-	{
-		id: "gigaam-v3", name: "GigaAM v3", size: "~225 MB", sizeBytes: 235_929_600, runtimeRamMB: 560,
-		notes: "Russian only, fast and accurate", langSupport: "russian-only", tier: "edge", preferred: true, accuracy: 4, speed: 4,
-		sherpaModel: {
-			type: "nemo_ctc",
-			files: { model: "model.int8.onnx", tokens: "tokens.txt" },
-			downloadUrls: {
-				model: hf1("sherpa-onnx-nemo-ctc-giga-am-v3-russian-2025-12-16", "model.int8.onnx"),
-				tokens: hf1("sherpa-onnx-nemo-ctc-giga-am-v3-russian-2025-12-16", "tokens.txt"),
-			},
-		},
-	},
-	// ── Parakeet (NVIDIA NeMo) — transducer architecture ─────────────────
-	{
-		id: "parakeet-v2", name: "Parakeet TDT v2", size: "~661 MB", sizeBytes: 693_109_760, runtimeRamMB: 1650,
-		notes: "WER 6.0%, English only, best English accuracy", langSupport: "english-only", tier: "standard", preferred: true, accuracy: 5, speed: 4,
-		sherpaModel: {
-			type: "transducer",
-			files: { encoder: "encoder.int8.onnx", decoder: "decoder.int8.onnx", joiner: "joiner.int8.onnx", tokens: "tokens.txt" },
-			downloadUrls: {
-				encoder: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8", "encoder.int8.onnx"),
-				decoder: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8", "decoder.int8.onnx"),
-				joiner: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8", "joiner.int8.onnx"),
-				tokens: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8", "tokens.txt"),
-			},
-		},
-	},
-	{
-		id: "parakeet-v3", name: "Parakeet TDT v3", size: "~671 MB", sizeBytes: 703_594_496, runtimeRamMB: 1675,
-		notes: "WER 6.3%, 25 languages, auto-detect, fast and accurate", langSupport: "parakeet-multi", tier: "standard", preferred: true, accuracy: 4, speed: 4,
-		sherpaModel: {
-			type: "transducer",
-			files: { encoder: "encoder.int8.onnx", decoder: "decoder.int8.onnx", joiner: "joiner.int8.onnx", tokens: "tokens.txt" },
-			downloadUrls: {
-				encoder: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8", "encoder.int8.onnx"),
-				decoder: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8", "decoder.int8.onnx"),
-				joiner: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8", "joiner.int8.onnx"),
-				tokens: hf1("sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8", "tokens.txt"),
-			},
-		},
-	},
 ];
 
 export const DEFAULT_LOCAL_ENDPOINT = "http://localhost:8080";
-export const DEFAULT_LOCAL_MODEL = "whisper-small";
+export const DEFAULT_LOCAL_MODEL = "parakeet-v3";
 
 // ─── Language support per model family ───────────────────────────────────────
 // Whisper uses simple ISO 639-1 codes (no regional variants like "en-AU").
