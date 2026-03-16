@@ -11,6 +11,12 @@
 
 ---
 
+## See How It Works
+
+<video src="assets/pi-listen.mp4" controls width="100%"></video>
+
+---
+
 ## Setup (2 minutes)
 
 ### 1. Install the extension
