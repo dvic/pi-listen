@@ -283,10 +283,8 @@ See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ---
 
-## Links
-
-- **Author:** [@baanditeagle](https://x.com/baanditeagle) on X
-- **npm:** [npmjs.com/package/@codexstar/pi-listen](https://www.npmjs.com/package/@codexstar/pi-listen)
-- **GitHub:** [github.com/codexstar69/pi-listen](https://github.com/codexstar69/pi-listen)
-- **Deepgram:** [dpgr.am/pi-voice](https://dpgr.am/pi-voice) ($200 free credit)
-- **Pi CLI:** [github.com/mariozechner/pi-coding-agent](https://github.com/mariozechner/pi-coding-agent)
+<p align="center">
+  <strong>Made by <a href="https://x.com/baanditeagle">@baanditeagle</a></strong>
+  <br><br>
+  <a href="https://abhishektiwari.co">Website</a> · <a href="https://x.com/baanditeagle">𝕏 Twitter</a> · <a href="https://github.com/codexstar69/pi-listen">GitHub</a> · <a href="https://www.npmjs.com/package/@codexstar/pi-listen">npm</a> · <a href="https://github.com/codexstar69/pi-listen/issues">Report a Bug</a> · <a href="https://github.com/mariozechner/pi-coding-agent">Pi CLI</a>
+</p>
