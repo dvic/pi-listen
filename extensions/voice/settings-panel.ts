@@ -315,15 +315,18 @@ export class VoiceSettingsPanel {
 			const name = isSelected ? cyan(m.name) : m.name;
 			const size = dim(` — ${m.size}`);
 			const badge = this.fitnessBadge(m.fitness);
+			const acc = this.compactRating(m.accuracy);
+			const spd = this.compactRating(m.speed);
 			const status = isCurrent ? green(" ● active")
 				: isDl ? green(" ✓ ready")
 				: dim(" ○");
-			lines.push(`${prefix}${name}${size} ${badge}${status}`);
-			// Show accuracy/speed on a detail line for the selected item
+			lines.push(`${prefix}${name}${size} ${badge} ${acc}${dim("/")}${spd}${status}`);
+			// Expanded detail for selected item
 			if (isSelected) {
 				const accBar = this.ratingBar(m.accuracy, "Accuracy");
 				const spdBar = this.ratingBar(m.speed, "Speed   ");
-				lines.push(`      ${accBar}  ${spdBar}  ${dim(m.notes)}`);
+				lines.push(`      ${accBar}  ${spdBar}`);
+				lines.push(`      ${dim(m.notes)}`);
 			}
 		}
 
@@ -695,6 +698,12 @@ export class VoiceSettingsPanel {
 		return entry ? `${entry.name} (${code})` : code;
 	}
 
+	/** Compact inline rating: "●●●●○" — shown on every model row */
+	private compactRating(value: 1 | 2 | 3 | 4 | 5): string {
+		return "●".repeat(value) + dim("○".repeat(5 - value));
+	}
+
+	/** Labeled rating bar for expanded detail: "Accuracy ●●●●○" */
 	private ratingBar(value: 1 | 2 | 3 | 4 | 5, label: string): string {
 		const filled = "●".repeat(value);
 		const empty = dim("○".repeat(5 - value));
