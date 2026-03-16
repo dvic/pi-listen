@@ -445,12 +445,12 @@ export async function runVoiceOnboarding(
 	const backendChoice = await ctx.ui.select(
 		"Choose transcription backend:",
 		[
-			"Deepgram (cloud, real-time streaming, needs API key)",
-			"Local model (offline, no API key, auto-download)",
+			"Deepgram — cloud, live streaming as you speak, $200 free credit",
+			"Local model — fully offline, no API key, transcribes after recording",
 		],
 	);
 	if (!backendChoice) return undefined;
-	const selectedBackend: VoiceBackend = backendChoice.startsWith("Local") ? "local" : "deepgram";
+	const selectedBackend: VoiceBackend = backendChoice.includes("Local") ? "local" : "deepgram";
 
 	let localModel = currentConfig.localModel;
 	let localEndpoint: string | undefined = currentConfig.localEndpoint;
@@ -484,8 +484,10 @@ export async function runVoiceOnboarding(
 				ctx.ui.notify(
 					[
 						`Selected: ${recommended.name} (${recommended.size})`,
-						"Model will download automatically on first voice recording.",
-						"No server setup needed — runs in-process.",
+						"Model downloads on first use — fully offline after that.",
+						"",
+						"Note: Local models transcribe after you finish recording (batch mode).",
+						"For live streaming as you speak, use Deepgram instead.",
 					].join("\n"),
 					"info",
 				);
@@ -603,7 +605,7 @@ export async function runVoiceOnboarding(
 				const detectedEntry = languages.find(l => l.code === detectedLang);
 				if (detectedEntry) {
 					langCode = detectedLang;
-					ctx.ui.notify(`Language auto-detected: ${detectedEntry.name} (${detectedEntry.code}). Change with /voice-language.`, "info");
+					ctx.ui.notify(`Language auto-detected: ${detectedEntry.name} (${detectedEntry.code}). Change in /voice-settings.`, "info");
 				} else {
 					const picked = await pickLanguage(ctx, currentConfig.language, languages);
 					if (!picked) return undefined;
@@ -633,7 +635,7 @@ export async function runVoiceOnboarding(
 
 	const summaryLines = [
 		`Backend: ${backendLabel}`,
-		`Language: ${languageDisplayName(langCode)}${isFirstRun ? "" : " (change with /voice-language)"}`,
+		`Language: ${languageDisplayName(langCode)}${isFirstRun ? "" : " (change in /voice-settings)"}`,
 		`Scope: ${selectedScope}`,
 		...(selectedBackend === "deepgram"
 			? [`API key: ${process.env.DEEPGRAM_API_KEY ? "configured" : "not yet set"}`]

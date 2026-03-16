@@ -1776,36 +1776,42 @@ export default function (pi: ExtensionAPI) {
 		} else if (!config.onboarding.completed) {
 			// First-time hint — show once, non-intrusive
 			const hasKey = !!resolveDeepgramApiKey(config);
+			const hasLocalModel = config.backend === "local" && !!config.localModel;
 			if (startCtx.hasUI) {
 				const audioTool = detectAudioCaptureTool();
-				if (hasKey) {
-					// Key exists but onboarding not completed — just activate
+				if (hasKey || hasLocalModel) {
+					// Backend configured (Deepgram key or local model) — auto-activate
 					config.onboarding.completed = true;
 					config.onboarding.completedAt = new Date().toISOString();
 					config.onboarding.source = "migration";
 					saveConfig(config, config.scope === "project" ? "project" : "global", currentCwd);
 					updateVoiceStatus();
 					setupHoldToTalk();
+					const backendLabel = hasLocalModel
+						? `Local model: ${LOCAL_MODELS.find(m => m.id === config.localModel)?.name || config.localModel} (offline, batch mode)`
+						: "Deepgram Nova-3 (cloud, live streaming)";
 					const lines = [
-						"pi-voice ready!",
+						"pi-listen ready!",
 						"",
 						"  Hold SPACE to record → release to transcribe",
 						"  Ctrl+Shift+V to toggle recording",
-						"  Escape × 2 to clear the editor",
+						`  Backend: ${backendLabel}`,
 						`  Audio: ${audioTool ? `${audioTool.name}` : "NONE — install sox or ffmpeg"}`,
-						"  /voice test to verify setup",
+						"",
+						"  /voice-settings to change backend, model, or language",
 					];
 					startCtx.ui.notify(lines.join("\n"), audioTool ? "info" : "warning");
 				} else {
 					const lines = [
-						"pi-voice installed — voice input for Pi",
+						"pi-listen installed — voice input for Pi",
 						"",
-						"  Hold SPACE to record, release to transcribe.",
+						"  Two backends available:",
+						"  • Deepgram — cloud, live streaming, $200 free credit (6–12 months of use)",
+						"  • Local models — fully offline, no API key, auto-downloads on first use",
 						"",
-						"  Setup:",
-						"  1. Get a Deepgram API key → https://dpgr.am/pi-voice ($200 free credit)",
-						`  2. ${audioTool ? `Audio capture: ${audioTool.name} ✓` : "Install sox or ffmpeg (audio capture)"}`,
-						"  3. Run /voice-settings to configure",
+						`  Audio capture: ${audioTool ? `${audioTool.name} ✓` : "not found — install sox or ffmpeg"}`,
+						"",
+						"  Run /voice-settings to choose your backend and get started.",
 					];
 					startCtx.ui.notify(lines.join("\n"), "info");
 				}

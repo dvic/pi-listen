@@ -26,13 +26,32 @@
 pi install npm:@codexstar/pi-listen
 ```
 
-### 2. Get a Deepgram API key
+### 2. Choose your backend
 
-Sign up at [dpgr.am/pi-voice](https://dpgr.am/pi-voice) — $200 free credit, no card needed. Depending on usage, this typically lasts 6 months to 1 year for most developers.
+pi-listen supports two transcription backends:
+
+| | Deepgram (cloud) | Local models (offline) |
+|---|---|---|
+| **How it works** | Live streaming — text appears as you speak | Batch mode — transcribes after you finish recording |
+| **Setup** | API key required | No API key, models auto-download on first use |
+| **Internet** | Required | Not required after model download |
+| **Latency** | Real-time interim results | 2–10 seconds after recording stops |
+| **Languages** | 56+ with live streaming | Depends on model (1–57 languages) |
+| **Cost** | $200 free credit (lasts 6–12 months for most developers) | Free forever |
+
+Run `/voice-settings` inside Pi to choose your backend and configure everything from one panel.
+
+#### Option A: Deepgram (recommended for live streaming)
+
+Sign up at [dpgr.am/pi-voice](https://dpgr.am/pi-voice) — $200 free credit, no card needed.
 
 ```bash
 export DEEPGRAM_API_KEY="your-key-here"    # add to ~/.zshrc or ~/.bashrc
 ```
+
+#### Option B: Local models (fully offline)
+
+No setup needed — run `/voice-settings`, switch backend to Local, and select a model. It downloads automatically.
 
 ### 3. Open Pi
 

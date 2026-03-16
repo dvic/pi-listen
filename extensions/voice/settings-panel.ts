@@ -241,7 +241,9 @@ export class VoiceSettingsPanel {
 		const rows: { label: string; value: string; hint?: string }[] = [
 			{
 				label: "Backend",
-				value: isLocal ? green("Local (offline)") : cyan("Deepgram (cloud)"),
+				value: isLocal
+					? green("Local (offline, batch)")
+					: cyan("Deepgram (cloud, live streaming)"),
 				hint: "toggle",
 			},
 			{
