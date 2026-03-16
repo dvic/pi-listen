@@ -1,49 +1,40 @@
 # pi-listen
 
-> Hold-to-talk voice input for the Pi coding agent CLI.
+> Hold-to-talk voice input for the Pi coding agent. Cloud streaming via Deepgram or fully offline with local models.
 
 ## Overview
 
-pi-listen adds streaming voice-to-text input to Pi. Hold SPACE to record, release to transcribe — text appears in the editor in real time via Deepgram Nova 3 WebSocket streaming. Pre-records during warmup so you never miss the first word. Tail-records 1.5s after release so your last word isn't clipped.
+pi-listen adds voice-to-text input to Pi. Hold SPACE to record, release to transcribe. Two backends: Deepgram (cloud, live streaming as you speak) or local models (offline, batch mode after recording). 19 local models from Parakeet, Whisper, Moonshine, SenseVoice, and GigaAM with accuracy/speed ratings and device-aware recommendations.
 
 ## Setup
 
 1. `pi install npm:@codexstar/pi-listen` (outside Pi)
-2. Get key at https://dpgr.am/pi-voice ($200 free credit)
-3. `export DEEPGRAM_API_KEY="your-key"` in ~/.zshrc
-4. Open Pi — first-run checks API key + audio tool, tells you what's ready/missing
-5. Audio capture auto-detects: sox → ffmpeg → arecord. Install one if missing.
-
-## Documentation
-
-- [README](https://github.com/codexstar69/pi-listen/blob/main/README.md): Setup, usage, features
-- [Troubleshooting](https://github.com/codexstar69/pi-listen/blob/main/docs/troubleshooting.md): Common issues
-- [Changelog](https://github.com/codexstar69/pi-listen/blob/main/CHANGELOG.md): Release history
-- [License](https://github.com/codexstar69/pi-listen/blob/main/LICENSE): MIT
-
-## Components
-
-- `extensions/voice.ts`: Main extension — hold-to-talk state machine, pre-recording, tail recording, Deepgram streaming, waveform widget, double-escape editor clear
-- `extensions/voice/config.ts`: Config loading, saving, migration
-- `extensions/voice/onboarding.ts`: First-run setup wizard, language picker (56+ languages)
-- `extensions/voice/deepgram.ts`: Deepgram URL builder, API key resolver
-
-## Keybindings
-
-- `SPACE` (hold ≥1.2s) — Record to editor (pre-records during warmup)
-- `Ctrl+Shift+V` — Toggle recording
-- `Escape` × 2 — Clear editor text
+2. Open Pi, run `/voice-settings` to choose backend
+3. Deepgram: get key at https://dpgr.am/pi-voice ($200 free credit, lasts 6-12 months)
+4. Local: select a model, it downloads automatically
+5. Audio capture auto-detects: sox, ffmpeg, or arecord
 
 ## Commands
 
-- `/voice-setup` — Interactive setup wizard
-- `/voice test` — Full diagnostics (audio tool, mic, API key validation)
-- `/voice-language` — Change transcription language (56+ supported, fuzzy picker)
-- `/voice-settings` — Show current voice config
-- `/voice [on|off|dictate|stop|info|history]`
+- `/voice-settings` — Unified settings panel (backend, models, language, device)
+- `/voice-models` — Settings panel focused on Models tab
+- `/voice test` — Full diagnostics (audio tool, mic, API key)
+- `/voice [on|off|dictate|stop|history]`
 
-## Installation
+## Components
 
-```
-pi install npm:@codexstar/pi-listen
-```
+- `extensions/voice.ts`: Main extension — state machine, recording, settings panel handler
+- `extensions/voice/config.ts`: Config loading, saving, migration
+- `extensions/voice/onboarding.ts`: First-run wizard, language picker
+- `extensions/voice/deepgram.ts`: Deepgram URL builder, API key resolver
+- `extensions/voice/local.ts`: Model catalog (19 models), in-process transcription
+- `extensions/voice/device.ts`: Device profiling, model fitness scoring
+- `extensions/voice/model-download.ts`: Download manager with resume, verification, Handy import
+- `extensions/voice/sherpa-engine.ts`: sherpa-onnx bindings, recognizer lifecycle
+- `extensions/voice/settings-panel.ts`: Settings panel overlay (4 tabs)
+
+## Documentation
+
+- [README](https://github.com/codexstar69/pi-listen/blob/main/README.md): Setup, usage, features, screenshots
+- [Changelog](https://github.com/codexstar69/pi-listen/blob/main/CHANGELOG.md): Release history
+- [License](https://github.com/codexstar69/pi-listen/blob/main/LICENSE): MIT

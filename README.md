@@ -4,7 +4,7 @@
   <img src="assets/banner.png" alt="pi-listen — Voice input for the Pi coding agent" width="100%" />
 </p>
 
-**Hold-to-talk voice input for [Pi](https://github.com/mariozechner/pi-coding-agent).**
+**Hold-to-talk voice input for [Pi](https://github.com/mariozechner/pi-coding-agent).** Cloud streaming via Deepgram or fully offline with local models.
 
 [![npm version](https://img.shields.io/npm/v/@codexstar/pi-listen.svg)](https://www.npmjs.com/package/@codexstar/pi-listen)
 [![license](https://img.shields.io/npm/l/@codexstar/pi-listen.svg)](https://github.com/codexstar69/pi-listen/blob/main/LICENSE)
@@ -53,17 +53,18 @@ export DEEPGRAM_API_KEY="your-key-here"    # add to ~/.zshrc or ~/.bashrc
 
 No setup needed — run `/voice-settings`, switch backend to Local, and select a model. It downloads automatically.
 
+> **Note:** Local models use batch mode — they transcribe after you finish recording, not while you speak. For live streaming as you speak, use Deepgram.
+
 ### 3. Open Pi
 
-On first launch, pi-listen checks your setup and tells you exactly what's ready and what's missing:
-- Deepgram API key — set or not
-- Audio capture tool — sox, ffmpeg, or arecord (auto-detected)
-- If everything is configured, voice activates immediately with a keybinding guide
-- If something is missing, you get step-by-step instructions
+On first launch, pi-listen checks your setup and tells you what's ready:
+- Backend configured (Deepgram key or local model)
+- Audio capture tool detected (sox, ffmpeg, or arecord)
+- If everything checks out, voice activates immediately
 
 ### Audio capture
 
-pi-listen auto-detects your audio capture tool. No manual install needed if you already have sox or ffmpeg.
+pi-listen auto-detects your audio tool. No manual install needed if you already have sox or ffmpeg.
 
 | Priority | Tool | Platforms | Install |
 |----------|------|-----------|---------|
@@ -71,13 +72,35 @@ pi-listen auto-detects your audio capture tool. No manual install needed if you 
 | 2 | **ffmpeg** | macOS, Linux, Windows | `brew install ffmpeg` / `apt install ffmpeg` |
 | 3 | **arecord** | Linux only | Pre-installed (ALSA) |
 
-If none are found, `/voice test` tells you what to install.
+---
 
-### Verify everything works
+## Settings Panel
 
-```bash
-/voice test    # Inside Pi — checks audio tool, mic, and validates API key
-```
+All configuration lives in one place: `/voice-settings`. Four tabs cover everything you need.
+
+### General — backend, language, scope
+
+<img src="assets/settings-general.png" alt="General settings — backend, model, language, scope, voice toggle" width="600" />
+
+Toggle between Deepgram (cloud, live streaming) and Local (offline, batch mode). Change language, scope, and enable/disable voice — all with keyboard shortcuts.
+
+### Models — browse, search, install
+
+<img src="assets/settings-models.png" alt="Models tab — browse 19 models with accuracy/speed ratings" width="600" />
+
+Browse 19 models from Parakeet, Whisper, Moonshine, SenseVoice, and GigaAM. Each model shows accuracy and speed ratings (●●●●○/●●●●○), fitness badges, and download status. Fuzzy search to find models fast. Press Enter to activate and download.
+
+### Downloaded — manage installed models
+
+<img src="assets/settings-downloaded.png" alt="Downloaded tab — manage installed models, activate or delete" width="600" />
+
+See what's installed, total disk usage, and which model is active. Press Enter to activate, `x` to delete. Models from [Handy](https://github.com/cjpais/handy) are auto-detected and can be imported without re-downloading.
+
+### Device — hardware profile and dependencies
+
+<img src="assets/settings-device.png" alt="Device tab — hardware profile, dependencies, disk space" width="600" />
+
+See your hardware profile (RAM, CPU, GPU), dependency status (sherpa-onnx runtime), available disk space, and total downloaded models. Model recommendations are based on this profile.
 
 ---
 
@@ -94,7 +117,7 @@ If none are found, `/voice test` tells you what to install.
 ### How recording works
 
 1. **Hold SPACE** — warmup countdown appears, audio capture starts immediately (pre-recording)
-2. **Keep holding** — live transcription streams into the editor as you speak
+2. **Keep holding** — live transcription streams into the editor (Deepgram) or audio buffers (local)
 3. **Release SPACE** — recording continues for 1.5s (tail recording) to catch your last word, then finalizes
 4. Text appears in the editor, ready to send
 
@@ -102,54 +125,62 @@ If none are found, `/voice test` tells you what to install.
 
 | Command | Description |
 |---------|-------------|
-| `/voice-settings` | Settings panel — backend, models, language, scope, device info |
-| `/voice-models` | Settings panel (Models tab) — browse, install, manage models |
-| `/voice test` | Full diagnostics — audio tool, mic capture, API key validation |
+| `/voice-settings` | Settings panel — backend, models, language, scope, device |
+| `/voice-models` | Settings panel (Models tab) |
+| `/voice test` | Full diagnostics — audio tool, mic, API key |
 | `/voice on` / `off` | Enable or disable voice |
-| `/voice dictate` | Continuous dictation (no key hold needed) |
+| `/voice dictate` | Continuous dictation (no key hold) |
 | `/voice stop` | Stop active recording or dictation |
 | `/voice history` | Recent transcriptions |
 | `/voice` | Toggle on/off |
 
 ---
 
-## Local Models (Offline Transcription)
+## Local Models
 
-pi-listen supports fully offline speech-to-text via local models. No API key required — models download automatically on first use.
+19 models across 5 families. Sorted by quality — best models first.
 
-### Getting started with local models
+### Top picks
 
-```bash
-# During setup, choose "Local model" when prompted:
-/voice-setup
+| Model | Accuracy | Speed | Size | Languages | Notes |
+|-------|----------|-------|------|-----------|-------|
+| **Parakeet TDT v3** | ●●●●○ | ●●●●○ | 671 MB | 25 (auto-detect) | Best overall. WER 6.3%. |
+| **Parakeet TDT v2** | ●●●●● | ●●●●○ | 661 MB | English | Best English. WER 6.0%. |
+| **Whisper Turbo** | ●●●●○ | ●●○○○ | 1.0 GB | 57 | Broadest language support. |
 
-# Or switch anytime with the interactive model manager:
-/voice-models
+### Fast and lightweight
+
+| Model | Accuracy | Speed | Size | Languages | Notes |
+|-------|----------|-------|------|-----------|-------|
+| **Moonshine v2 Tiny** | ●●○○○ | ●●●●● | 43 MB | English | 34ms latency. Raspberry Pi friendly. |
+| **Moonshine Base** | ●●●○○ | ●●●●● | 287 MB | English | Handles accents well. |
+| **SenseVoice Small** | ●●●○○ | ●●●●● | 228 MB | zh/en/ja/ko/yue | Best for CJK languages. |
+
+### Specialist
+
+| Model | Accuracy | Speed | Size | Languages | Notes |
+|-------|----------|-------|------|-----------|-------|
+| **GigaAM v3** | ●●●●○ | ●●●●○ | 225 MB | Russian | 50% lower WER than Whisper on Russian. |
+| **Whisper Medium** | ●●●●○ | ●●●○○ | 946 MB | 57 | Good accuracy, medium speed. |
+| **Whisper Large v3** | ●●●●○ | ●○○○○ | 1.8 GB | 57 | Highest Whisper accuracy. Slow on CPU. |
+
+Plus 10 language-specialized Moonshine v2 variants (Japanese, Korean, Arabic, Chinese, Ukrainian, Vietnamese, Spanish).
+
+### How local models work
+
+```
+Hold SPACE → audio captured to memory buffer
+                ↓
+Release SPACE → buffer sent to sherpa-onnx (in-process)
+                ↓
+         ONNX inference on CPU (2–10 seconds)
+                ↓
+         Final transcript inserted into editor
 ```
 
-### Interactive model manager
+Models download automatically on first use. Downloads are resumable, verified after completion, and deduplicated (no double-downloads). The settings panel shows real-time download progress with speed and ETA.
 
-`/voice-models` opens a tabbed panel with three views:
-
-| Tab | Description |
-|-----|-------------|
-| **All Models** | Browse 20+ models with fuzzy search, fitness badges, and one-key activation |
-| **Downloaded** | Manage downloaded models — activate or delete with a single keystroke |
-| **Device** | View hardware profile (RAM, CPU, GPU) used for model recommendations |
-
-**Navigation:** `←` `→` switch tabs, `↑` `↓` navigate items, type to search, `Enter` to activate, `d` to delete, `Esc` to close.
-
-### Available model families
-
-| Family | Languages | Sizes | Best for |
-|--------|-----------|-------|----------|
-| **Moonshine v2** | English + 7 specialized (ja, ko, ar, zh, uk, vi, es) | 43–135 MB | Edge devices, Raspberry Pi, fast inference |
-| **Whisper** (OpenAI) | 57 languages | 375 MB – 1.8 GB | Broad language coverage, proven accuracy |
-| **SenseVoice** (Alibaba) | zh, en, ja, ko, yue | 228 MB | CJK languages, ultra-fast batch |
-| **GigaAM v3** (Sber) | Russian | 225 MB | Russian (50% lower WER than Whisper) |
-| **Parakeet** (NVIDIA) | English + multilingual | 661–671 MB | High accuracy, transducer architecture |
-
-Models are scored against your device hardware — the manager shows `[recommended]`, `[compatible]`, `[may be slow]`, or `[too large]` for each model so you can make an informed choice.
+Models from [Handy](https://github.com/cjpais/handy) (`~/Library/Application Support/com.pais.handy/models/`) are auto-detected and can be imported via symlink (zero disk duplication).
 
 ---
 
@@ -157,79 +188,43 @@ Models are scored against your device hardware — the manager shows `[recommend
 
 | Feature | Description |
 |---------|-------------|
-| **Audio fallback chain** | Tries sox, ffmpeg, arecord in order — works on most systems without extra installs |
-| **Pre-recording** | Audio capture starts during warmup countdown — you never miss the first word |
+| **Dual backend** | Deepgram (cloud, live streaming) or local models (offline, batch) — switch in settings |
+| **19 local models** | Parakeet, Whisper, Moonshine, SenseVoice, GigaAM — with accuracy/speed ratings |
+| **Unified settings panel** | One overlay panel for all configuration — `/voice-settings` |
+| **Device-aware recommendations** | Scores models against your hardware. Only best-in-class models get [recommended]. |
+| **Enterprise download pipeline** | Pre-checks (disk, network, permissions), live progress with speed/ETA, post-verification |
+| **Handy integration** | Auto-detects models from Handy app, imports via symlink |
+| **Audio fallback chain** | Tries sox, ffmpeg, arecord in order |
+| **Pre-recording** | Audio capture starts during warmup — you never miss the first word |
 | **Tail recording** | Keeps recording 1.5s after release so your last word isn't clipped |
-| **Live streaming** | Deepgram Nova 3 WebSocket — interim transcripts appear as you speak |
-| **Reactive waveform** | Audio-level-driven animation with fast attack / slow decay |
-| **56+ languages** | `/voice-language` fuzzy picker — Chinese auto-switches to Nova-2 |
+| **Live streaming** | Deepgram Nova 3 WebSocket — interim transcripts as you speak |
+| **56+ languages** | Deepgram: 56+ with live streaming. Local: up to 57 depending on model. |
 | **Continuous dictation** | `/voice dictate` for long-form input without holding keys |
-| **Double-escape clear** | Press Escape twice to clear the editor |
-| **Offline local models** | 20+ models from Moonshine, Whisper, SenseVoice, GigaAM, Parakeet — auto-download, zero config |
-| **Smart model recommendations** | Device-aware fitness scoring — recommends the best model for your hardware |
-| **Interactive model manager** | Tabbed TUI panel with fuzzy search, keyboard navigation, and one-key actions |
-| **Zero-config start** | Auto-activates if `DEEPGRAM_API_KEY` is set — no wizard needed |
-| **First-run diagnostics** | Checks API key + audio tool on first launch, shows what's ready and what to install |
-| **API key validation** | `/voice test` validates your key against the live Deepgram API |
-| **Typing cooldown** | Space holds within 400ms of typing are ignored — voice never fires mid-sentence |
+| **Typing cooldown** | Space holds within 400ms of typing are ignored |
 | **Sound feedback** | macOS system sounds for start, stop, and error events |
-| **Session corruption guard** | Overlapping recording requests abort the stale session first |
 | **Cross-platform** | macOS, Windows, Linux — Kitty protocol + non-Kitty fallback |
 
 ---
 
-## How It Works
+## Architecture
 
 ```
-Hold SPACE → warmup countdown (pre-recording starts)
-                ↓ (≥1.2s)
-         Audio capture (sox → ffmpeg → arecord fallback)
-                ↓
-         Streams PCM to Deepgram Nova 3 via WebSocket
-                ↓
-         Interim transcripts update editor in real time
-                ↓
-Release SPACE → tail recording (1.5s) → CloseStream → final transcript
-```
-
-### Audio capture fallback chain
-
-pi-listen tries three audio backends in order and uses the first one found:
-
-1. **SoX** (`rec`) — purpose-built for recording, best quality
-2. **ffmpeg** — widely available, captures from default mic (avfoundation on macOS, pulse on Linux, dshow on Windows)
-3. **arecord** — built into Linux ALSA, zero install needed
-
-The result is cached for the process lifetime. If none are found, you get a clear error with install instructions.
-
-### Hold detection
-
-**Kitty protocol** (Ghostty, Kitty, WezTerm, Windows Terminal 1.22+):
-True key-down/repeat/release events. First press enters warmup immediately. Release stops recording.
-
-**Non-Kitty** (macOS Terminal, older terminals):
-Gap-based detection. Counts rapid key-repeat events to confirm hold. Gap in repeats = released.
-
-Both modes: ≥1.2s hold to activate. Quick taps type a normal space.
-
-### Architecture
-
-```
-extensions/voice.ts              Main extension — state machine, recording, UI, model manager
-extensions/voice/config.ts       Config loading, saving, migration
-extensions/voice/onboarding.ts   First-run setup wizard, language picker, model picker
-extensions/voice/deepgram.ts     Deepgram URL builder, API key resolver
-extensions/voice/local.ts        Local model catalog, in-process transcription, WAV encoding
-extensions/voice/device.ts       Device profiling — RAM, GPU, CPU, container detection
-extensions/voice/model-download.ts  Model download manager — resume, progress, atomic writes
+extensions/voice.ts                Main extension — state machine, recording, UI, settings panel
+extensions/voice/config.ts         Config loading, saving, migration
+extensions/voice/onboarding.ts     First-run wizard, language picker
+extensions/voice/deepgram.ts       Deepgram URL builder, API key resolver
+extensions/voice/local.ts          Model catalog (19 models), in-process transcription
+extensions/voice/device.ts         Device profiling — RAM, GPU, CPU, container detection
+extensions/voice/model-download.ts Download manager — resume, progress, verification, Handy import
 extensions/voice/sherpa-engine.ts   sherpa-onnx bindings — recognizer lifecycle, inference
+extensions/voice/settings-panel.ts  Settings panel — Component interface, overlay, 4 tabs
 ```
 
 ---
 
 ## Configuration
 
-Settings in Pi's settings files under the `voice` key:
+Settings stored in Pi's settings files under the `voice` key:
 
 | Scope | Path |
 |-------|------|
@@ -242,6 +237,8 @@ Settings in Pi's settings files under the `voice` key:
     "version": 2,
     "enabled": true,
     "language": "en",
+    "backend": "local",
+    "localModel": "parakeet-v3",
     "scope": "global",
     "onboarding": { "completed": true, "schemaVersion": 2 }
   }
@@ -252,25 +249,24 @@ Settings in Pi's settings files under the `voice` key:
 
 ## Troubleshooting
 
-Run `/voice test` inside Pi for full diagnostics. It checks your audio capture tool, mic, and validates your Deepgram API key against the live API.
+Run `/voice test` inside Pi for full diagnostics.
 
 | Problem | Solution |
 |---------|----------|
 | "DEEPGRAM_API_KEY not set" | [Get a key](https://dpgr.am/pi-voice) → `export DEEPGRAM_API_KEY="..."` in `~/.zshrc` |
-| "INVALID KEY" | Check at [console.deepgram.com](https://console.deepgram.com) |
-| "No audio capture tool found" | Install one of: `brew install sox`, `brew install ffmpeg`, or use `arecord` (Linux, pre-installed) |
-| Space doesn't activate voice | Run `/voice info` — voice may be disabled or onboarding incomplete |
-| Voice triggers in fuzzy search | Typing cooldown should prevent this — try `Ctrl+Shift+V` instead |
-
-See [docs/troubleshooting.md](docs/troubleshooting.md) for more.
+| "No audio capture tool found" | `brew install sox` or `brew install ffmpeg` |
+| Space doesn't activate voice | Run `/voice-settings` — voice may be disabled |
+| Local model not transcribing | Check `/voice-settings` → Device tab for sherpa-onnx status |
+| Download failed | Partial downloads auto-resume on retry. Check disk space in Device tab. |
 
 ---
 
 ## Security
 
-- **Cloud STT** — audio is sent to Deepgram for transcription
+- **Cloud STT** — audio is sent to Deepgram for transcription (Deepgram backend only)
+- **Local STT** — audio never leaves your machine (local backend)
 - **No telemetry** — pi-listen does not collect or transmit usage data
-- **API key** — stored in env var or Pi settings, never logged or exposed in errors
+- **API key** — stored in env var or Pi settings, never logged
 
 See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
