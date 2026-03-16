@@ -741,7 +741,9 @@ export async function stopLocalSession(session: LocalSession, config: VoiceConfi
 		session.onDone(text, { hadAudio: true, hadSpeech: text.trim().length > 0 });
 	} catch (err: any) {
 		if (session.closed) {
-			session.onDone("", { hadAudio: false, hadSpeech: false });
+			// Session was aborted during transcription — still surface the error
+			// so the user knows transcription failed, not just "no speech"
+			session.onError(`Local transcription aborted: ${err.message || err}`);
 			return;
 		}
 		session.closed = true;

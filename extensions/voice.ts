@@ -1033,18 +1033,23 @@ export default function (pi: ExtensionAPI) {
 					return;
 				}
 
-				// Live transcript already showed text in editor — just finalize quietly.
-				// No check mark widget, no "Processing" animation, no STT notification needed.
 				hideWidget();
 
 				if (ctx?.hasUI) {
-					// The editor already has the live transcript via updateLiveTranscriptWidget.
-					// Only set final text if the editor still has content.
-					// If user already hit Enter (editor cleared), don't re-insert.
-					const currentEditorText = ctx.ui.getEditorText?.() ?? "";
-					if (currentEditorText.trim()) {
-						const prefix = editorTextBeforeVoice ? editorTextBeforeVoice + " " : "";
+					const prefix = editorTextBeforeVoice ? editorTextBeforeVoice + " " : "";
+					const isLocal = config.backend === "local";
+
+					if (isLocal) {
+						// Local backend (batch mode): no interim transcripts were sent to the editor,
+						// so we must always insert the final text. This is the ONLY place it arrives.
 						ctx.ui.setEditorText(prefix + fullText);
+					} else {
+						// Streaming backend: interim transcripts already updated the editor live.
+						// Only set final text if the editor still has content (user didn't hit Enter).
+						const currentEditorText = ctx.ui.getEditorText?.() ?? "";
+						if (currentEditorText.trim()) {
+							ctx.ui.setEditorText(prefix + fullText);
+						}
 					}
 					const elapsed = ((Date.now() - recordingStart) / 1000).toFixed(1);
 					addToHistory(fullText, parseFloat(elapsed));
@@ -1167,8 +1172,9 @@ export default function (pi: ExtensionAPI) {
 			clearRecordingAnimTimer();
 			hideWidget();
 			if (activeSession.backend === "local") {
-				// Local: show "Transcribing..." while model processes audio
-				ctx?.ui.notify("Transcribing with local model...", "info");
+				// Local: show which model is transcribing + estimated time
+				const modelName = LOCAL_MODELS.find(m => m.id === (config.localModel || "whisper-small"))?.name || config.localModel || "local model";
+				ctx?.ui.notify(`Transcribing with ${modelName}…`, "info");
 				await stopLocalSession(activeSession, config);
 			} else {
 				stopStreamingSession(activeSession);
