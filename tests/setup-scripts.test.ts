@@ -9,7 +9,7 @@ describe("documentation", () => {
 		expect(readme).toContain("DEEPGRAM_API_KEY");
 		expect(readme).toContain("dpgr.am/pi-voice");
 		expect(readme).toContain("/voice test");
-		expect(readme).toContain("/voice-setup");
+		expect(readme).toContain("/voice-settings");
 	});
 
 	test("README documents audio fallback chain", () => {

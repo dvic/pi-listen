@@ -21,6 +21,8 @@ export interface VoiceOnboardingState {
 	skippedAt?: string;
 }
 
+export type VoiceBackend = "deepgram" | "local";
+
 export interface VoiceConfig {
 	version: number;
 	enabled: boolean;
@@ -29,6 +31,12 @@ export interface VoiceConfig {
 	onboarding: VoiceOnboardingState;
 	/** Deepgram API key — stored in config so it's available even when env var isn't set */
 	deepgramApiKey?: string;
+	/** Transcription backend — "deepgram" (cloud streaming) or "local" (batch via local server) */
+	backend?: VoiceBackend;
+	/** Local model ID (e.g. "whisper-small", "whisper-turbo", "parakeet-v3") */
+	localModel?: string;
+	/** Local transcription server URL (default: http://localhost:8080) */
+	localEndpoint?: string;
 }
 
 export interface LoadedVoiceConfig {
@@ -48,6 +56,9 @@ export const DEFAULT_CONFIG: VoiceConfig = {
 	language: "en",
 	scope: "global",
 	deepgramApiKey: undefined,
+	backend: undefined, // undefined = "deepgram" (default)
+	localModel: undefined,
+	localEndpoint: undefined,
 	onboarding: {
 		completed: false,
 		schemaVersion: VOICE_CONFIG_VERSION,
@@ -100,6 +111,9 @@ function migrateConfig(rawVoice: any, source: VoiceConfigSource): VoiceConfig {
 		language: typeof rawVoice.language === "string" ? rawVoice.language : DEFAULT_CONFIG.language,
 		scope: (rawVoice.scope as VoiceSettingsScope | undefined) ?? (source === "project" ? "project" : "global"),
 		deepgramApiKey: typeof rawVoice.deepgramApiKey === "string" ? rawVoice.deepgramApiKey : undefined,
+		backend: rawVoice.backend === "local" ? "local" : undefined,
+		localModel: typeof rawVoice.localModel === "string" ? rawVoice.localModel : undefined,
+		localEndpoint: typeof rawVoice.localEndpoint === "string" ? rawVoice.localEndpoint : undefined,
 		onboarding: normalizeOnboarding(rawVoice.onboarding, fallbackCompleted),
 	};
 }
