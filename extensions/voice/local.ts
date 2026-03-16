@@ -696,8 +696,12 @@ export async function stopLocalSession(session: LocalSession, config: VoiceConfi
 	// Wait briefly for any remaining audio data
 	await new Promise((r) => setTimeout(r, 200));
 
-	// Recheck after await — abort may have fired during the 200ms wait
-	if (session.closed) return;
+	// Recheck after await — abort may have fired during the 200ms wait.
+	// Still call onDone so the voice state machine transitions back to idle.
+	if (session.closed) {
+		session.onDone("", { hadAudio: false, hadSpeech: false });
+		return;
+	}
 
 	const pcmData = Buffer.concat(session.audioChunks);
 	// Free individual chunk references during transcription
@@ -726,13 +730,20 @@ export async function stopLocalSession(session: LocalSession, config: VoiceConfi
 			]);
 		}
 
-		// Recheck after await — abort may have fired during transcription
-		if (session.closed) return;
+		// Recheck after await — abort may have fired during transcription.
+		// Still call onDone so state machine transitions back to idle.
+		if (session.closed) {
+			session.onDone("", { hadAudio: false, hadSpeech: false });
+			return;
+		}
 
 		session.closed = true;
 		session.onDone(text, { hadAudio: true, hadSpeech: text.trim().length > 0 });
 	} catch (err: any) {
-		if (session.closed) return;
+		if (session.closed) {
+			session.onDone("", { hadAudio: false, hadSpeech: false });
+			return;
+		}
 		session.closed = true;
 		session.onError(`Local transcription failed: ${err.message || err}`);
 	}

@@ -212,9 +212,15 @@ export async function downloadModel(
 	return dir;
 }
 
+// ─── In-flight deduplication ──────────────────────────────────────────────────
+// Prevents concurrent downloads of the same model from corrupting shared .tmp files.
+const _inFlight = new Map<string, Promise<string>>();
+
 /**
  * Ensure a model is downloaded, downloading if needed.
  * This is the main entry point for the transcription engine.
+ * Deduplicates concurrent calls for the same model — second caller
+ * joins the first download instead of starting a parallel one.
  */
 export async function ensureModelDownloaded(
 	modelId: string,
@@ -227,11 +233,19 @@ export async function ensureModelDownloaded(
 		return getModelDir(modelId);
 	}
 
-	return downloadModel(
+	// Join existing download if one is already in progress
+	if (_inFlight.has(modelId)) {
+		return _inFlight.get(modelId)!;
+	}
+
+	const promise = downloadModel(
 		{ modelId, files: expectedFiles, totalSizeBytes },
 		onProgress,
 		signal,
-	);
+	).finally(() => _inFlight.delete(modelId));
+
+	_inFlight.set(modelId, promise);
+	return promise;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
