@@ -279,12 +279,13 @@ See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## License
 
-[MIT](LICENSE) © 2026 codexstar69
+[MIT](LICENSE) © 2026 [@baanditeagle](https://x.com/baanditeagle)
 
 ---
 
 ## Links
 
+- **Author:** [@baanditeagle](https://x.com/baanditeagle) on X
 - **npm:** [npmjs.com/package/@codexstar/pi-listen](https://www.npmjs.com/package/@codexstar/pi-listen)
 - **GitHub:** [github.com/codexstar69/pi-listen](https://github.com/codexstar69/pi-listen)
 - **Deepgram:** [dpgr.am/pi-voice](https://dpgr.am/pi-voice) ($200 free credit)
