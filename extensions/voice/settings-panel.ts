@@ -425,7 +425,7 @@ export class VoiceSettingsPanel {
 		lines.push("");
 		lines.push(dim("    ── Dependencies ──"));
 		const sherpaOk = this.p.isSherpaAvailable();
-		lines.push(`    ${"sherpa-onnx".padEnd(labelW)}${sherpaOk ? green("ready") : yellow("not initialized — will init on first use")}`);
+		lines.push(`    ${"sherpa-onnx".padEnd(labelW)}${sherpaOk ? green("ready") : green("standby — loads on first recording")}`);
 
 		// Disk space
 		const freeSpace = getFreeDiskSpace(getModelsDir());
