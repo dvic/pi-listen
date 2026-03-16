@@ -315,14 +315,16 @@ export class VoiceSettingsPanel {
 			const name = isSelected ? cyan(m.name) : m.name;
 			const size = dim(` — ${m.size}`);
 			const badge = this.fitnessBadge(m.fitness);
-			const useShort = iw < 50;
-			const accBar = this.ratingBar(m.accuracy, "A");
-			const spdBar = this.ratingBar(m.speed, "S");
-			const metrics = useShort ? "" : ` ${accBar} ${spdBar}`;
 			const status = isCurrent ? green(" ● active")
 				: isDl ? green(" ✓ ready")
 				: dim(" ○");
-			lines.push(`${prefix}${name}${size} ${badge}${metrics}${status}`);
+			lines.push(`${prefix}${name}${size} ${badge}${status}`);
+			// Show accuracy/speed on a detail line for the selected item
+			if (isSelected) {
+				const accBar = this.ratingBar(m.accuracy, "Accuracy");
+				const spdBar = this.ratingBar(m.speed, "Speed   ");
+				lines.push(`      ${accBar}  ${spdBar}  ${dim(m.notes)}`);
+			}
 		}
 
 		if (total === 0) {
@@ -694,9 +696,9 @@ export class VoiceSettingsPanel {
 	}
 
 	private ratingBar(value: 1 | 2 | 3 | 4 | 5, label: string): string {
-		const filled = "█".repeat(value);
-		const empty = dim("░".repeat(5 - value));
-		return dim(`${label}:`) + filled + empty;
+		const filled = "●".repeat(value);
+		const empty = dim("○".repeat(5 - value));
+		return dim(label + " ") + filled + empty;
 	}
 
 	private fitnessBadge(f: ModelFitness): string {
