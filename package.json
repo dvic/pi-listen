@@ -1,7 +1,7 @@
 {
   "name": "@codexstar/pi-listen",
-  "version": "4.0.1",
-  "description": "Hold-to-talk voice input for Pi CLI — Deepgram streaming STT with live transcription and cross-platform support",
+  "version": "5.0.0",
+  "description": "Hold-to-talk voice input for Pi CLI — cloud streaming via Deepgram or fully offline with 19 local models",
   "type": "module",
   "keywords": [
     "pi-package",
