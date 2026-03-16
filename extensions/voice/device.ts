@@ -84,7 +84,11 @@ export function detectDevice(): DeviceProfile {
 
 /**
  * Score how well a model fits this device.
- * Uses runtime RAM estimates (~2.5x model file size for ONNX inference).
+ *
+ * "recommended" is reserved for preferred models (best-in-class for their
+ * language/use case) that fit comfortably. All other runnable models are
+ * "compatible". This prevents every model from showing [recommended] on
+ * machines with plenty of RAM.
  */
 export function getModelFitness(model: LocalModelInfo, device: DeviceProfile): ModelFitness {
 	const runtimeRamMB = model.runtimeRamMB ?? estimateRuntimeRam(model.sizeBytes);
@@ -92,8 +96,9 @@ export function getModelFitness(model: LocalModelInfo, device: DeviceProfile): M
 
 	if (ratio > 0.8) return "incompatible";
 	if (runtimeRamMB > device.freeRamMB) return "warning";
-	if (ratio > 0.5) return "compatible";
-	return "recommended";
+	// Only preferred models get "recommended" — others that fit are "compatible"
+	if (model.preferred && ratio < 0.5) return "recommended";
+	return "compatible";
 }
 
 /** Estimate runtime RAM from download size (bytes) — ~2.5x model file size. */

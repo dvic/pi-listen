@@ -43,6 +43,8 @@ export interface LocalModelInfo {
 		| "single-ar" | "single-zh" | "single-ja" | "single-ko" | "single-uk" | "single-vi" | "single-es";
 	/** Device tier: edge (<256 MB), standard (256 MB–1 GB), heavy (>1 GB) */
 	tier: "edge" | "standard" | "heavy";
+	/** Preferred model — best-in-class for its language/use case. Only these get [recommended]. */
+	preferred?: boolean;
 	/** sherpa-onnx model configuration — file paths and download URLs */
 	sherpaModel: SherpaModelConfig;
 }
@@ -82,7 +84,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	// ── Moonshine v2 (moonshine-ai) — English only, uses encoder + mergedDecoder ──
 	{
 		id: "moonshine-v2-tiny", name: "Moonshine v2 Tiny", size: "~43 MB", sizeBytes: 45_088_768, runtimeRamMB: 110,
-		notes: "Streaming, ultra-fast, English only", langSupport: "english-only", tier: "edge",
+		notes: "Streaming, ultra-fast, English only", langSupport: "english-only", tier: "edge", preferred: true,
 		sherpaModel: {
 			type: "moonshine",
 			files: { encoder: "encoder_model.ort", mergedDecoder: "decoder_model_merged.ort", tokens: "tokens.txt" },
@@ -285,7 +287,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	// ── SenseVoice (Alibaba/FunAudioLLM) — 5 languages ───────────────────
 	{
 		id: "sensevoice-small", name: "SenseVoice Small", size: "~228 MB", sizeBytes: 239_075_328, runtimeRamMB: 570,
-		notes: "5 languages (zh/en/ja/ko/yue), ultra-fast batch", langSupport: "sensevoice", tier: "edge",
+		notes: "5 languages (zh/en/ja/ko/yue), ultra-fast batch", langSupport: "sensevoice", tier: "edge", preferred: true,
 		sherpaModel: {
 			type: "sense_voice",
 			files: { model: "model.int8.onnx", tokens: "tokens.txt" },
@@ -298,7 +300,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	// ── GigaAM v3 (Sber/Salute) — Russian only, NeMo CTC ────────────────
 	{
 		id: "gigaam-v3", name: "GigaAM v3", size: "~225 MB", sizeBytes: 235_929_600, runtimeRamMB: 560,
-		notes: "Russian only, 50% lower WER than Whisper on Russian", langSupport: "russian-only", tier: "edge",
+		notes: "Russian only, 50% lower WER than Whisper on Russian", langSupport: "russian-only", tier: "edge", preferred: true,
 		sherpaModel: {
 			type: "nemo_ctc",
 			files: { model: "model.int8.onnx", tokens: "tokens.txt" },
@@ -325,7 +327,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
 	},
 	{
 		id: "parakeet-v3", name: "Parakeet TDT v3", size: "~671 MB", sizeBytes: 703_594_496, runtimeRamMB: 1675,
-		notes: "Multilingual, auto language detection, NVIDIA NeMo", langSupport: "parakeet-multi", tier: "standard",
+		notes: "Multilingual, auto language detection, NVIDIA NeMo", langSupport: "parakeet-multi", tier: "standard", preferred: true,
 		sherpaModel: {
 			type: "transducer",
 			files: { encoder: "encoder.int8.onnx", decoder: "decoder.int8.onnx", joiner: "joiner.int8.onnx", tokens: "tokens.txt" },

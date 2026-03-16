@@ -189,15 +189,6 @@ export class VoiceSettingsPanel {
 
 		// Tab-specific keys
 		if (tabId === "models") {
-			// 'i' = install (pre-download)
-			if (data === "i") {
-				const model = this.modelFiltered[this.row];
-				if (model) {
-					this.activateModel(model.id);
-					this.onClose?.({ type: "download", modelId: model.id });
-				}
-				return;
-			}
 			// Backspace = delete char from search
 			if (matchesKey(data, Key.backspace)) {
 				this.modelSearch = this.modelSearch.slice(0, -1);
@@ -298,7 +289,7 @@ export class VoiceSettingsPanel {
 	private renderModels(_w: number, iw: number): string[] {
 		const lines: string[] = [];
 		const currentId = this.p.config.localModel || "whisper-small";
-		const downloaded = new Set(this.p.getDownloadedModels().map(d => d.id));
+		const downloadedMap = new Map(this.p.getDownloadedModels().map(d => [d.id, d.sizeMB]));
 
 		// Search bar
 		const cursor = this.modelSearch ? this.modelSearch : dim("type to search…");
@@ -315,7 +306,7 @@ export class VoiceSettingsPanel {
 			const m = this.modelFiltered[i]!;
 			const isSelected = i === this.row;
 			const isCurrent = m.id === currentId;
-			const isDl = downloaded.has(m.id);
+			const isDl = downloadedMap.has(m.id);
 
 			const prefix = isSelected ? cyan("  → ") : "    ";
 			const name = isSelected ? cyan(m.name) : m.name;
@@ -323,8 +314,9 @@ export class VoiceSettingsPanel {
 			const badge = this.fitnessBadge(m.fitness);
 			const useShort = iw < 50;
 			const notes = useShort ? "" : dim(` (${m.notes})`);
-			const status = isCurrent ? green(" ✓ active")
-				: isDl ? dim(" ✓ downloaded") : "";
+			const status = isCurrent ? green(" ● active")
+				: isDl ? green(" ✓ ready")
+				: dim(" ○ not downloaded");
 			lines.push(`${prefix}${name}${size} ${badge}${notes}${status}`);
 		}
 
@@ -335,7 +327,7 @@ export class VoiceSettingsPanel {
 		}
 
 		lines.push("");
-		lines.push(dim("  ↵ activate  i install  ←→ tabs  ↑↓ navigate  esc close"));
+		lines.push(dim("  ↵ activate + download  ←→ tabs  ↑↓ navigate  esc close"));
 		return lines;
 	}
 
@@ -519,7 +511,15 @@ export class VoiceSettingsPanel {
 			}
 		} else if (tabId === "models") {
 			const model = this.modelFiltered[this.row];
-			if (model) this.activateModel(model.id);
+			if (model) {
+				this.activateModel(model.id);
+				// If not downloaded, close panel and trigger download
+				const downloaded = new Set(this.p.getDownloadedModels().map(d => d.id));
+				if (!downloaded.has(model.id)) {
+					this.onClose?.({ type: "download", modelId: model.id });
+					return;
+				}
+			}
 		} else if (tabId === "downloaded") {
 			const dl = this.getDownloaded();
 			const item = dl[this.row];
