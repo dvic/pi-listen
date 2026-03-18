@@ -4,6 +4,7 @@ import {
 	isSherpaAvailable,
 	getSherpaError,
 	clearRecognizerCache,
+	transcribeBuffer,
 } from "../extensions/voice/sherpa-engine";
 
 // ─── Module loading ──────────────────────────────────────────────────────────
@@ -87,5 +88,37 @@ describe("recognizer error handling", () => {
 describe("clearRecognizerCache", () => {
 	test("clears without error when no recognizer cached", () => {
 		expect(() => clearRecognizerCache()).not.toThrow();
+	});
+});
+
+describe("transcribeBuffer", () => {
+	test("accepts PCM buffers with an odd byteOffset", async () => {
+		await initSherpa();
+
+		const accepted: { sampleRate: number; samples: Float32Array }[] = [];
+		const recognizer = {
+			createStream() {
+				return {
+					acceptWaveform(payload: { sampleRate: number; samples: Float32Array }) {
+						accepted.push(payload);
+					},
+				};
+			},
+			async decodeAsync() {},
+			getResult() {
+				return { text: "ok" };
+			},
+		};
+
+		const pcm = Buffer.from([0, 0, 255, 127, 0, 128, 0, 0]).subarray(1, 7);
+
+		await expect(transcribeBuffer(pcm, recognizer)).resolves.toBe("ok");
+		expect(accepted).toHaveLength(1);
+		expect(accepted[0]?.sampleRate).toBe(16000);
+		expect(Array.from(accepted[0]?.samples || [])).toEqual([
+			-256 / 32768,
+			127 / 32768,
+			128 / 32768,
+		]);
 	});
 });

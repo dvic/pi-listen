@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.4] - 2026-03-18
+
+### Fixed
+- **Deepgram shutdown waits for server finals** — stream stop now sends
+  `CloseStream`, waits for Deepgram to return the last finalized transcript, and
+  only falls back to local finalization after a short timeout.
+- **Single-fire Deepgram error handling** — streaming failures now close the
+  session once, preventing duplicate error notifications and conflicting state
+  transitions from `error` plus `close`.
+- **Misaligned PCM buffers in sherpa path** — odd-offset `Buffer` inputs now
+  fall back to `readInt16LE()` instead of throwing `RangeError` when converting
+  audio samples.
+
+### Added
+- **Regression test for odd-offset PCM input** — `transcribeBuffer()` is now
+  covered for pooled `Buffer` slices with non-2-byte-aligned offsets.
+
 ## [5.0.1] - 2026-03-16
 
 ### Security
@@ -117,6 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pompom/Lumo creature companion (now separate package)
 
 [5.0.1]: https://github.com/codexstar69/pi-listen/releases/tag/v5.0.1
+[5.0.4]: https://github.com/codexstar69/pi-listen/releases/tag/v5.0.4
 [4.0.0]: https://github.com/codexstar69/pi-listen/releases/tag/v4.0.0
 [3.4.0]: https://github.com/codexstar69/pi-listen/releases/tag/v3.4.0
 [3.3.1]: https://github.com/codexstar69/pi-listen/releases/tag/v3.3.1

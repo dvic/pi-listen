@@ -298,8 +298,18 @@ function createTransducerRecognizer(model: LocalModelInfo, modelDir: string): Sh
  * Safe on all sherpa-onnx platforms (x86/ARM LE). Respects Buffer.byteOffset for pooled buffers.
  */
 function pcmToFloat32(pcm: Buffer): Float32Array {
-	const numSamples = pcm.length / 2;
+	const numSamples = Math.floor(pcm.length / 2);
 	const float32 = new Float32Array(numSamples);
+
+	// Pooled Buffer instances can start at odd byte offsets, which makes a
+	// direct Int16Array view throw. Fall back to readInt16LE in that case.
+	if ((pcm.byteOffset & 1) !== 0) {
+		for (let i = 0; i < numSamples; i++) {
+			float32[i] = pcm.readInt16LE(i * 2) / 32768.0;
+		}
+		return float32;
+	}
+
 	const int16 = new Int16Array(pcm.buffer, pcm.byteOffset, numSamples);
 	for (let i = 0; i < numSamples; i++) {
 		float32[i] = int16[i]! / 32768.0;
@@ -314,4 +324,3 @@ function getNumThreads(): number {
 	if (cpus <= 4) return 2;
 	return Math.min(4, cpus - 2);
 }
-

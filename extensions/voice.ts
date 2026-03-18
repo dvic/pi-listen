@@ -101,6 +101,7 @@ type VoiceState = "idle" | "warmup" | "recording" | "finalizing";
 
 const KEEPALIVE_INTERVAL_MS = 8000;
 const MAX_RECORDING_SECS = 120;
+const STREAM_FINALIZE_TIMEOUT_MS = 2500;
 
 // Hold-to-talk timing — Apple-style deliberate hold detection
 // The goal: typing normally should NEVER accidentally trigger voice.
@@ -297,7 +298,9 @@ interface StreamingSession {
 	finalizedParts: string[];
 	keepAliveTimer: ReturnType<typeof setInterval> | null;
 	staleSessionTimer: ReturnType<typeof setTimeout> | null;
+	finalizeTimer: ReturnType<typeof setTimeout> | null;
 	closed: boolean;
+	stopRequested: boolean;
 	hadAudioData: boolean;       // Track if we received any audio data
 	hadSpeech: boolean;          // Track if Deepgram detected any speech
 	receivedMessage: boolean;    // Track if we got ANY message from Deepgram
@@ -368,7 +371,9 @@ function startStreamingSession(
 		finalizedParts: [],
 		keepAliveTimer: null,
 		staleSessionTimer: null,
+		finalizeTimer: null,
 		closed: false,
+		stopRequested: false,
 		hadAudioData: false,
 		hadSpeech: false,
 		receivedMessage: false,
@@ -386,9 +391,7 @@ function startStreamingSession(
 			res.on("end", () => {
 				voiceDebug("WebSocket unexpected-response", { status: res.statusCode, body });
 				if (!session.closed) {
-					session.onError(`Deepgram HTTP ${res.statusCode}: ${body.slice(0, 200)}`);
-					session.closed = true;
-					try { recProc.kill("SIGTERM"); } catch {}
+					failStreamingSession(session, `Deepgram HTTP ${res.statusCode}: ${body.slice(0, 200)}`);
 				}
 			});
 		});
@@ -416,7 +419,7 @@ function startStreamingSession(
 					session.staleSessionTimer = setTimeout(() => {
 						if (!session.closed && !session.receivedMessage) {
 							voiceDebug("Stale session: no Deepgram response after 15s of audio");
-							session.onError("No response from Deepgram (15s). Check your API key and network.");
+							failStreamingSession(session, "No response from Deepgram (15s). Check your API key and network.");
 						}
 					}, 15_000);
 				}
@@ -457,7 +460,7 @@ function startStreamingSession(
 
 				session.onTranscript(session.interimText, session.finalizedParts);
 			} else if (msg.type === "Error" || msg.type === "error") {
-				session.onError(msg.message || msg.description || "Deepgram error");
+				failStreamingSession(session, msg.message || msg.description || "Deepgram error");
 			}
 		} catch (err) {
 			voiceDebug("onmessage parse error", { error: String(err) });
@@ -469,7 +472,7 @@ function startStreamingSession(
 		const errMsg = (ev as any)?.message || (ev as any)?.error?.message || "unknown";
 		voiceDebug("WebSocket onerror", { readyState: ws.readyState, error: errMsg });
 		if (!session.closed) {
-			session.onError(`WebSocket error: ${errMsg}`);
+			failStreamingSession(session, `WebSocket error: ${errMsg}`);
 		}
 	};
 
@@ -480,12 +483,16 @@ function startStreamingSession(
 		voiceDebug("WebSocket onclose", { code, reason, closed: session.closed });
 		if (!session.closed) {
 			// Unexpected close — distinguish normal completion from network drops
-			if (code === 1000 || code === 1001 || session.finalizedParts.length > 0) {
+			if (session.stopRequested || code === 1000 || code === 1001 || session.finalizedParts.length > 0) {
+				if (session.interimText.trim()) {
+					session.finalizedParts.push(session.interimText.trim());
+					session.interimText = "";
+				}
 				// Normal close or we have usable transcript data — finalize
 				finalizeSession(session);
 			} else {
 				// Abnormal close with no transcript — treat as error
-				session.onError(`Connection lost (code ${code ?? "unknown"}${reason ? `: ${reason}` : ""})`);
+				failStreamingSession(session, `Connection lost (code ${code ?? "unknown"}${reason ? `: ${reason}` : ""})`);
 			}
 		}
 	};
@@ -493,7 +500,7 @@ function startStreamingSession(
 	recProc.on("error", (err) => {
 		voiceDebug("SoX process error:", err.message);
 		if (!session.closed) {
-			session.onError(`SoX error: ${err.message}`);
+			failStreamingSession(session, `SoX error: ${err.message}`);
 		}
 	});
 
@@ -501,7 +508,7 @@ function startStreamingSession(
 		voiceDebug("SoX process closed", { code, signal, closed: session.closed, wsState: ws.readyState });
 		// Only send CloseStream if the session isn't already being torn down
 		// (stopStreamingSession sends its own CloseStream before killing SoX)
-		if (!session.closed && ws.readyState === WebSocket.OPEN) {
+		if (!session.closed && !session.stopRequested && ws.readyState === WebSocket.OPEN) {
 			try { ws.send(JSON.stringify({ type: "CloseStream" })); } catch {}
 		}
 	});
@@ -511,6 +518,7 @@ function startStreamingSession(
 
 function stopStreamingSession(session: StreamingSession): void {
 	if (session.closed) return;
+	session.stopRequested = true;
 
 	try { session.recProcess.kill("SIGTERM"); } catch {}
 
@@ -518,13 +526,17 @@ function stopStreamingSession(session: StreamingSession): void {
 		try { session.ws.send(JSON.stringify({ type: "CloseStream" })); } catch {}
 	}
 
-	// Finalize immediately — the live stream already captured all finals.
-	// Include any trailing interim text that Deepgram hasn't promoted yet.
-	if (session.interimText.trim()) {
-		session.finalizedParts.push(session.interimText.trim());
-		session.interimText = "";
+	if (!session.finalizeTimer) {
+		session.finalizeTimer = setTimeout(() => {
+			session.finalizeTimer = null;
+			if (session.closed) return;
+			if (session.interimText.trim()) {
+				session.finalizedParts.push(session.interimText.trim());
+				session.interimText = "";
+			}
+			finalizeSession(session);
+		}, STREAM_FINALIZE_TIMEOUT_MS);
 	}
-	finalizeSession(session);
 }
 
 function finalizeSession(session: StreamingSession): void {
@@ -535,6 +547,10 @@ function finalizeSession(session: StreamingSession): void {
 	if (session.staleSessionTimer) {
 		clearTimeout(session.staleSessionTimer);
 		session.staleSessionTimer = null;
+	}
+	if (session.finalizeTimer) {
+		clearTimeout(session.finalizeTimer);
+		session.finalizeTimer = null;
 	}
 	if (session.keepAliveTimer) {
 		clearInterval(session.keepAliveTimer);
@@ -549,6 +565,29 @@ function finalizeSession(session: StreamingSession): void {
 		hadAudio: session.hadAudioData,
 		hadSpeech: session.hadSpeech,
 	});
+}
+
+function failStreamingSession(session: StreamingSession, err: string): void {
+	if (session.closed) return;
+	session.closed = true;
+	session.stopRequested = true;
+
+	if (session.staleSessionTimer) {
+		clearTimeout(session.staleSessionTimer);
+		session.staleSessionTimer = null;
+	}
+	if (session.finalizeTimer) {
+		clearTimeout(session.finalizeTimer);
+		session.finalizeTimer = null;
+	}
+	if (session.keepAliveTimer) {
+		clearInterval(session.keepAliveTimer);
+		session.keepAliveTimer = null;
+	}
+
+	try { session.ws.close(); } catch {}
+	try { session.recProcess.kill("SIGKILL"); } catch {}
+	session.onError(err);
 }
 
 // ─── Abort helper — nuke everything synchronously ────────────────────────────

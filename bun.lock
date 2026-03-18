@@ -4,8 +4,10 @@
   "workspaces": {
     "": {
       "name": "pi-voice",
+      "optionalDependencies": {
+        "sherpa-onnx-node": "^1.12.29",
+      },
       "peerDependencies": {
-        "@mariozechner/pi-ai": "*",
         "@mariozechner/pi-coding-agent": "*",
         "@mariozechner/pi-tui": "*",
       },
@@ -398,7 +400,7 @@
 
     "long": ["long@5.3.2", "", {}, "sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA=="],
 
-    "lru-cache": ["lru-cache@7.18.3", "", {}, "sha512-jumlc0BIUrS3qJGgIkWZsyfAM7NCWiBcCDhnd+3NNM5KbBmLTgHVfWBcg6W+rLUsIpzpERPsvwUP7CckAQSOoA=="],
+    "lru-cache": ["lru-cache@11.2.6", "", {}, "sha512-ESL2CrkS/2wTPfuend7Zhkzo2u0daGJ/A2VucJOgQ/C48S/zB8MMeMHSGKYpXhIjbPxfuezITkaBH1wqv00DDQ=="],
 
     "marked": ["marked@15.0.12", "", { "bin": { "marked": "bin/marked.js" } }, "sha512-8dD6FusOQSrpv9Z1rdNMdlSgQOIP880DHqnohobOmYLElGEqAL/JvxvuxZO16r4HtjTlfPRDC1hbvxC9dPN2nA=="],
 
@@ -471,6 +473,18 @@
     "shebang-command": ["shebang-command@2.0.0", "", { "dependencies": { "shebang-regex": "^3.0.0" } }, "sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA=="],
 
     "shebang-regex": ["shebang-regex@3.0.0", "", {}, "sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A=="],
+
+    "sherpa-onnx-darwin-arm64": ["sherpa-onnx-darwin-arm64@1.12.29", "", { "os": "darwin", "cpu": "arm64" }, "sha512-NJfrkNDmoNxtX8HU9DikmujNozas24XK/720z/Bzptx1HxSJy4nEPjUBoiiUw8GQg4ErhPXkI20i2BhX5Qj2Dg=="],
+
+    "sherpa-onnx-darwin-x64": ["sherpa-onnx-darwin-x64@1.12.29", "", { "os": "darwin", "cpu": "x64" }, "sha512-VvBARGvzd72gdLf+ooETAWUQmtnmobuEI7B2tP9JKzjY7rUswR72myTKq/pgdMOtKZcnrI4CEuC9vlWFYF9oFA=="],
+
+    "sherpa-onnx-linux-arm64": ["sherpa-onnx-linux-arm64@1.12.29", "", { "os": "linux", "cpu": "arm64" }, "sha512-tRK89/GvFcs/GSW0eo1ao3CV4OY3VL73vcll/OrvF6DCVADnBc0u3nSKS+sVLA0tEA+iMT8lh/+zXBCIKgdG5w=="],
+
+    "sherpa-onnx-linux-x64": ["sherpa-onnx-linux-x64@1.12.29", "", { "os": "linux", "cpu": "x64" }, "sha512-7JxaPID43PZ/Qbw0kQfMgmAbPfzFD+3a/Mar2oPqUI0xgOAAM0OnVfXaJOCZU8yQ74czExnkzXLx8OfEdIo9Bg=="],
+
+    "sherpa-onnx-node": ["sherpa-onnx-node@1.12.29", "", { "optionalDependencies": { "sherpa-onnx-darwin-arm64": "^1.12.29", "sherpa-onnx-darwin-x64": "^1.12.29", "sherpa-onnx-linux-arm64": "^1.12.29", "sherpa-onnx-linux-x64": "^1.12.29", "sherpa-onnx-win-ia32": "^1.12.29", "sherpa-onnx-win-x64": "^1.12.29" } }, "sha512-WrX2/4F8xX6Lyq8ZGLe0x+sPpDI+oqp83wdy1psw6qIPp342vgSq2kuUDN0dXZL3b3Wd594dw+FgSSL5DvIOIw=="],
+
+    "sherpa-onnx-win-ia32": ["sherpa-onnx-win-ia32@1.12.29", "", { "os": "win32", "cpu": "ia32" }, "sha512-L+S3jM+7yTrA3alG+r3CXkRzsZUcBnuL+gcwpUMz5tPq0WI2rl22UvqLIUjoplt8tMqEOYonzsLPY+Gll8ym8w=="],
 
     "signal-exit": ["signal-exit@3.0.7", "", {}, "sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ=="],
 
@@ -556,15 +570,13 @@
 
     "foreground-child/signal-exit": ["signal-exit@4.1.0", "", {}, "sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw=="],
 
-    "hosted-git-info/lru-cache": ["lru-cache@11.2.6", "", {}, "sha512-ESL2CrkS/2wTPfuend7Zhkzo2u0daGJ/A2VucJOgQ/C48S/zB8MMeMHSGKYpXhIjbPxfuezITkaBH1wqv00DDQ=="],
-
     "node-fetch/data-uri-to-buffer": ["data-uri-to-buffer@4.0.1", "", {}, "sha512-0R9ikRb668HB7QDxT1vkpuUBtqc53YyAwMwGeUFKRojY/NWKvdZ+9UYtRfGmhqNbRkTSVpMbmyhXipFFv2cb/A=="],
 
     "p-retry/retry": ["retry@0.13.1", "", {}, "sha512-XQBQ3I8W1Cge0Seh+6gjj03LbmRFWuoszgK9ooCpwYIrhhoO80pfq4cUkU5DkknwfOfFteRwlZ56PYOGYyFWdg=="],
 
     "parse5-htmlparser2-tree-adapter/parse5": ["parse5@6.0.1", "", {}, "sha512-Ofn/CTFzRGTTxwpNEs9PP93gXShHcTq255nzRYSKe8AkVpZY7e1fpmTfOyoIvjP5HG7Z2ZM7VS9PPhQGW2pOpw=="],
 
-    "path-scurry/lru-cache": ["lru-cache@11.2.6", "", {}, "sha512-ESL2CrkS/2wTPfuend7Zhkzo2u0daGJ/A2VucJOgQ/C48S/zB8MMeMHSGKYpXhIjbPxfuezITkaBH1wqv00DDQ=="],
+    "proxy-agent/lru-cache": ["lru-cache@7.18.3", "", {}, "sha512-jumlc0BIUrS3qJGgIkWZsyfAM7NCWiBcCDhnd+3NNM5KbBmLTgHVfWBcg6W+rLUsIpzpERPsvwUP7CckAQSOoA=="],
 
     "rimraf/glob": ["glob@10.5.0", "", { "dependencies": { "foreground-child": "^3.1.0", "jackspeak": "^3.1.2", "minimatch": "^9.0.4", "minipass": "^7.1.2", "package-json-from-dist": "^1.0.0", "path-scurry": "^1.11.1" }, "bin": { "glob": "dist/esm/bin.mjs" } }, "sha512-DfXN8DfhJ7NH3Oe7cFmu3NCu1wKbkReJ8TorzSAFbSKrlNaQSKfIzqYqVY8zlbs2NLBbWpRiU52GX2PbaBVNkg=="],
 
