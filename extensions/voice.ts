@@ -63,7 +63,7 @@ import type {
 	ExtensionContext,
 	ExtensionCommandContext,
 } from "@mariozechner/pi-coding-agent";
-import { isKeyRelease, isKeyRepeat, matchesKey } from "@mariozechner/pi-tui";
+import { isKeyRelease, isKeyRepeat, isKittyProtocolActive, matchesKey } from "@mariozechner/pi-tui";
 
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import * as fs from "node:fs";
@@ -130,6 +130,8 @@ const TAIL_RECORDING_MS = 1500;   // Keep recording for 1.5s after space release
                                    // trailing words. If user re-presses space within this
                                    // window, cancel the delayed stop and keep recording.
 const CORRUPTION_GUARD_MS = 200;  // Min gap between stop and restart
+const WARMUP_RELEASE_GRACE_MS = 120; // Linux terminals may emit repeated release events
+                                     // while a key is still physically held
 
 // Debug logging — set PI_VOICE_DEBUG=1 to enable
 const VOICE_DEBUG = !!process.env.PI_VOICE_DEBUG;
@@ -640,6 +642,7 @@ export default function (pi: ExtensionAPI) {
 	let holdActivationTimer: ReturnType<typeof setTimeout> | null = null;
 	let spaceConsumed = false;        // True once threshold passed and recording started
 	let releaseDetectTimer: ReturnType<typeof setTimeout> | null = null;
+	let warmupReleaseTimer: ReturnType<typeof setTimeout> | null = null;
 	let warmupWidgetTimer: ReturnType<typeof setInterval> | null = null;
 	let spacePressCount = 0;          // Count of rapid space presses (for non-Kitty hold detection)
 	let lastSpacePressTime = 0;       // Timestamp of last space press event
@@ -657,6 +660,10 @@ export default function (pi: ExtensionAPI) {
 			.split("+")
 			.map((part) => part.length <= 1 ? part.toUpperCase() : part[0]!.toUpperCase() + part.slice(1))
 			.join("+");
+	}
+
+	function shouldUseKittyHoldPath(): boolean {
+		return kittyReleaseDetected || (process.platform === "linux" && isKittyProtocolActive());
 	}
 
 	// ─── Recording History ───────────────────────────────────────────────────
@@ -766,6 +773,13 @@ export default function (pi: ExtensionAPI) {
 		}
 	}
 
+	function clearWarmupReleaseTimer() {
+		if (warmupReleaseTimer) {
+			clearTimeout(warmupReleaseTimer);
+			warmupReleaseTimer = null;
+		}
+	}
+
 	function clearWarmupWidget() {
 		if (warmupWidgetTimer) {
 			clearInterval(warmupWidgetTimer);
@@ -792,6 +806,7 @@ export default function (pi: ExtensionAPI) {
 		holdConfirmed = false;
 		clearHoldTimer();
 		clearReleaseTimer();
+		clearWarmupReleaseTimer();
 		abortPreRecording();
 		if (opts?.cooldown) errorCooldownUntil = Date.now() + opts.cooldown;
 	}
@@ -1370,12 +1385,17 @@ export default function (pi: ExtensionAPI) {
 					isRepeat: isKeyRepeat(data),
 					voiceState,
 					kittyReleaseDetected,
+					kittyPath: shouldUseKittyHoldPath(),
 					holdConfirmed,
 					spaceConsumed,
 					spacePressCount,
 					spaceDownTime: spaceDownTime ? Date.now() - spaceDownTime : null,
 					dataHex: Buffer.from(data).toString("hex"),
 				});
+
+				if (!isKeyRelease(data)) {
+					clearWarmupReleaseTimer();
+				}
 
 				// ── Kitty key-release (true release event) ──
 				if (isKeyRelease(data)) {
@@ -1387,18 +1407,21 @@ export default function (pi: ExtensionAPI) {
 					// If released after 300ms+, user was trying voice → show hint
 					if (voiceState === "warmup") {
 						const holdDuration = spaceDownTime ? Date.now() - spaceDownTime : 0;
-						resetHoldState();
-						abortPreRecording();
-						clearWarmupWidget();
-						hideWidget();
-						setVoiceState("idle");
-						if (holdDuration < 300) {
-							// Quick tap — just type a space
-							if (ctx?.hasUI) ctx.ui.setEditorText((ctx.ui.getEditorText() || "") + " ");
-						} else {
-							// Held long enough to see warmup but let go → show hint
-							ctx?.ui.notify("Hold SPACE longer to activate voice.", "info");
-						}
+						clearWarmupReleaseTimer();
+						warmupReleaseTimer = setTimeout(() => {
+							warmupReleaseTimer = null;
+							if (voiceState !== "warmup") return;
+							resetHoldState();
+							abortPreRecording();
+							clearWarmupWidget();
+							hideWidget();
+							setVoiceState("idle");
+							if (holdDuration < 300) {
+								if (ctx?.hasUI) ctx.ui.setEditorText((ctx.ui.getEditorText() || "") + " ");
+							} else {
+								ctx?.ui.notify("Hold SPACE longer to activate voice.", "info");
+							}
+						}, WARMUP_RELEASE_GRACE_MS);
 						return { consume: true };
 					}
 
@@ -1502,7 +1525,7 @@ export default function (pi: ExtensionAPI) {
 				//
 				// TWO TERMINAL MODES:
 				//
-				// A) Kitty protocol (kittyReleaseDetected = true):
+				// A) Kitty protocol (true release events available):
 				//    Press fires ONCE on key-down. Repeats come as isKeyRepeat().
 				//    Release comes as isKeyRelease(). NO timer-based release detection
 				//    needed — the true release event handles everything.
@@ -1526,7 +1549,7 @@ export default function (pi: ExtensionAPI) {
 					spaceConsumed = true; // Re-arm hold state for the continued recording
 					spaceDownTime = Date.now();
 					holdConfirmed = true;
-					if (!kittyReleaseDetected) {
+					if (!shouldUseKittyHoldPath()) {
 						voiceDebug("SPACE during recording → cancel delayed stop, re-arm release detect");
 						resetReleaseDetect();
 					} else {
@@ -1537,7 +1560,7 @@ export default function (pi: ExtensionAPI) {
 
 				// If already in warmup → consume
 				if (voiceState === "warmup") {
-					if (!kittyReleaseDetected) {
+					if (!shouldUseKittyHoldPath()) {
 						voiceDebug("SPACE during warmup → re-arm release detect");
 						resetReleaseDetect();
 					}
@@ -1548,7 +1571,7 @@ export default function (pi: ExtensionAPI) {
 				// This handles the gap between holdActivationTimer firing and
 				// voiceState transitioning to "recording" (async gap)
 				if (spaceConsumed) {
-					if (!kittyReleaseDetected) {
+					if (!shouldUseKittyHoldPath()) {
 						voiceDebug("SPACE while spaceConsumed (async gap) → re-arm release detect");
 						resetReleaseDetect();
 					}
@@ -1558,7 +1581,7 @@ export default function (pi: ExtensionAPI) {
 				// ──────────────────────────────────────────────────────────
 				// PATH A: Kitty protocol — true key events available
 				// ──────────────────────────────────────────────────────────
-				if (kittyReleaseDetected) {
+				if (shouldUseKittyHoldPath()) {
 					// First press → immediately enter warmup (release event
 					// will cancel if it was a tap)
 					if (voiceState === "idle") {
@@ -2040,7 +2063,7 @@ export default function (pi: ExtensionAPI) {
 				lines.push(`    onboarding:        ${config.onboarding.completed ? "complete" : "incomplete"}`);
 				lines.push(`    hold threshold:    ${HOLD_THRESHOLD_MS}ms`);
 				lines.push(`    toggle shortcut:   ${getToggleShortcut()}`);
-				lines.push(`    kitty protocol:    ${kittyReleaseDetected ? "detected" : "not detected"}`);
+				lines.push(`    kitty protocol:    ${shouldUseKittyHoldPath() ? "detected" : "not detected"}`);
 				lines.push(`    state:             ${voiceState}`);
 
 				// Mic capture test using detected tool
