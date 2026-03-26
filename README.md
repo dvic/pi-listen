@@ -12,7 +12,12 @@
 [![license](https://img.shields.io/npm/l/@codexstar/pi-listen.svg)](https://github.com/codexstar69/pi-listen/blob/main/LICENSE)
 [![author](https://img.shields.io/badge/author-@baanditeagle-1DA1F2?logo=x&logoColor=white)](https://x.com/baanditeagle)
 
-> **v5.0.1 — Security patch** — API keys no longer leak into project config. Mic audio can't be redirected to remote servers via malicious repo settings. Shell injection fixed in API key onboarding. Config writes are now atomic. [Full changelog →](CHANGELOG.md)
+> **v5.0.5 — Security patch** — env-derived Deepgram keys now stay runtime-only
+> and are no longer written into global Pi settings. Project config secret
+> stripping, loopback-only local endpoints, shell-safe onboarding writes, and
+> atomic config saves remain in place. Thanks to
+> [@dvic](https://github.com/dvic) for reporting the remaining global config
+> leak. [Full changelog →](CHANGELOG.md)
 
 ---
 
@@ -255,6 +260,10 @@ Settings stored in Pi's settings files under the `voice` key:
   }
 }
 ```
+
+`DEEPGRAM_API_KEY` from your shell is used at runtime and is not copied back
+into `~/.pi/agent/settings.json`. If you paste a key during onboarding, that is
+an explicit save and it still goes to `~/.env.secrets` or `~/.zshrc`.
 
 ---
 

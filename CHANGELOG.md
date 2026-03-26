@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.5] - 2026-03-26
+
+### Fixed
+- **Env-derived Deepgram keys stay runtime-only** — `DEEPGRAM_API_KEY` from the
+  shell is no longer copied into `~/.pi/agent/settings.json` during startup or
+  first-run auto-activation.
+- **Explicit secret saves remain intentional** — keys entered during onboarding
+  still go to `~/.env.secrets` or `~/.zshrc`, while runtime env resolution
+  continues to take priority over stored config.
+- **Report credit** — thanks to [@dvic](https://github.com/dvic) for reporting
+  the remaining global config leak.
+
 ## [5.0.4] - 2026-03-18
 
 ### Fixed

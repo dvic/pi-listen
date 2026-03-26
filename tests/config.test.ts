@@ -4,6 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import {
 	DEFAULT_CONFIG,
+	getSessionStartPersistedConfig,
 	isLoopbackEndpoint,
 	loadConfigWithSource,
 	needsOnboarding,
@@ -130,6 +131,39 @@ describe("needsOnboarding", () => {
 });
 
 describe("saveConfig", () => {
+	test("does not persist an env-only Deepgram key during session-start saves", () => {
+		const persisted = getSessionStartPersistedConfig({
+			config: {
+				...DEFAULT_CONFIG,
+				scope: "global",
+				onboarding: {
+					completed: true,
+					schemaVersion: DEFAULT_CONFIG.version,
+				},
+			},
+			envDeepgramApiKey: "env-secret-123",
+		});
+
+		expect(persisted.deepgramApiKey).toBeUndefined();
+	});
+
+	test("preserves an explicitly stored Deepgram key during session-start saves", () => {
+		const persisted = getSessionStartPersistedConfig({
+			config: {
+				...DEFAULT_CONFIG,
+				scope: "global",
+				deepgramApiKey: "saved-secret-123",
+				onboarding: {
+					completed: true,
+					schemaVersion: DEFAULT_CONFIG.version,
+				},
+			},
+			envDeepgramApiKey: "env-secret-123",
+		});
+
+		expect(persisted.deepgramApiKey).toBe("saved-secret-123");
+	});
+
 	test("writes global settings when scope is global", () => {
 		const cwd = makeTempDir();
 		const agentDir = path.join(cwd, "agent-home");

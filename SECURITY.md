@@ -64,6 +64,7 @@ pi-listen does not collect, transmit, or store any usage data, analytics, or tel
 
 ### 4. Defense in Depth
 - API key resolved from environment variable or config, never logged or included in error messages
+- Env-derived `DEEPGRAM_API_KEY` values are runtime-only and are not persisted back into `~/.pi/agent/settings.json`
 - Error responses do not expose stack traces or internal paths
 - Connection timeout (10s) and stale session watchdog (15s) prevent hung resources
 - Session corruption guard prevents overlapping recording sessions

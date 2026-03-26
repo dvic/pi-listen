@@ -12,7 +12,7 @@ If you only do one thing, start with `/voice test`.
 ## Symptom: "DEEPGRAM_API_KEY not set"
 
 ### What it means
-No Deepgram API key was found in environment variables or Pi settings.
+No Deepgram API key was found in environment variables or saved Pi settings.
 
 ### Fix
 1. Get a free key at [dpgr.am/pi-voice](https://dpgr.am/pi-voice) ($200 free credit, no card needed)
@@ -22,6 +22,12 @@ No Deepgram API key was found in environment variables or Pi settings.
    ```
 3. Add to `~/.zshrc` or `~/.bashrc` for persistence
 4. Or run `/voice-setup` inside Pi to paste it interactively
+
+### Important behavior
+- If the key comes from your shell environment, pi-listen uses it at runtime
+  only and does not copy it into `~/.pi/agent/settings.json`
+- If you paste a key during onboarding, that is an explicit save and it goes to
+  `~/.env.secrets` or `~/.zshrc`
 
 ## Symptom: "INVALID KEY" from `/voice test`
 

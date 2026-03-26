@@ -71,6 +71,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import {
 	DEFAULT_CONFIG,
+	getSessionStartPersistedConfig,
 	loadConfigWithSource,
 	saveConfig,
 	type VoiceConfig,
@@ -1801,16 +1802,6 @@ export default function (pi: ExtensionAPI) {
 		config = loaded.config;
 		configSource = loaded.source;
 
-		// Auto-capture DEEPGRAM_API_KEY from env into config (in-memory).
-		// Only persist to global config — never write secrets into project repos.
-		// serializeConfig() also strips deepgramApiKey from project saves as defense-in-depth.
-		if (process.env.DEEPGRAM_API_KEY && !config.deepgramApiKey) {
-			config.deepgramApiKey = process.env.DEEPGRAM_API_KEY;
-			if (configSource === "global") {
-				saveConfig(config, "global", currentCwd);
-			}
-		}
-
 		if (config.enabled && config.onboarding.completed) {
 			updateVoiceStatus();
 			setupHoldToTalk();
@@ -1825,7 +1816,11 @@ export default function (pi: ExtensionAPI) {
 					config.onboarding.completed = true;
 					config.onboarding.completedAt = new Date().toISOString();
 					config.onboarding.source = "migration";
-					saveConfig(config, config.scope === "project" ? "project" : "global", currentCwd);
+					const configToSave = getSessionStartPersistedConfig({
+						config,
+						envDeepgramApiKey: process.env.DEEPGRAM_API_KEY,
+					});
+					saveConfig(configToSave, config.scope === "project" ? "project" : "global", currentCwd);
 					updateVoiceStatus();
 					setupHoldToTalk();
 					const backendLabel = hasLocalModel

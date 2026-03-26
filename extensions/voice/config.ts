@@ -164,6 +164,23 @@ export function isLoopbackEndpoint(endpoint: string): boolean {
 	}
 }
 
+export function getSessionStartPersistedConfig({
+	config,
+	envDeepgramApiKey,
+}: {
+	config: VoiceConfig;
+	envDeepgramApiKey?: string;
+}): VoiceConfig {
+	if (!envDeepgramApiKey || config.deepgramApiKey) {
+		return config;
+	}
+
+	return {
+		...config,
+		deepgramApiKey: undefined,
+	};
+}
+
 function serializeConfig(config: VoiceConfig, scope: VoiceSettingsScope): VoiceConfig {
 	return {
 		...config,
