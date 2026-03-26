@@ -37,6 +37,8 @@ export interface VoiceConfig {
 	localModel?: string;
 	/** Local transcription server URL (default: http://localhost:8080) */
 	localEndpoint?: string;
+	/** Global-only shortcut used to toggle recording without hold-to-talk */
+	toggleShortcut?: string;
 }
 
 export interface LoadedVoiceConfig {
@@ -59,6 +61,7 @@ export const DEFAULT_CONFIG: VoiceConfig = {
 	backend: undefined, // undefined = "deepgram" (default)
 	localModel: undefined,
 	localEndpoint: undefined,
+	toggleShortcut: "ctrl+shift+v",
 	onboarding: {
 		completed: false,
 		schemaVersion: VOICE_CONFIG_VERSION,
@@ -115,6 +118,9 @@ function migrateConfig(rawVoice: any, source: VoiceConfigSource): VoiceConfig {
 		backend: rawVoice.backend === "local" ? "local" : undefined,
 		localModel: typeof rawVoice.localModel === "string" ? rawVoice.localModel : undefined,
 		localEndpoint: typeof rawVoice.localEndpoint === "string" ? rawVoice.localEndpoint : undefined,
+		toggleShortcut: source !== "project" && typeof rawVoice.toggleShortcut === "string"
+			? rawVoice.toggleShortcut
+			: DEFAULT_CONFIG.toggleShortcut,
 		onboarding: normalizeOnboarding(rawVoice.onboarding, fallbackCompleted),
 	};
 }
@@ -149,6 +155,15 @@ export function loadConfigWithSource(cwd: string, options: ConfigPathOptions = {
 		globalSettingsPath,
 		projectSettingsPath,
 	};
+}
+
+export function loadGlobalConfig(options: ConfigPathOptions = {}): VoiceConfig {
+	const globalSettingsPath = getGlobalSettingsPath(options);
+	const globalVoice = readJsonFile(globalSettingsPath)[SETTINGS_KEY];
+	if (globalVoice && typeof globalVoice === "object") {
+		return migrateConfig(globalVoice, "global");
+	}
+	return structuredClone(DEFAULT_CONFIG);
 }
 
 /** Check if a URL points to a loopback address (localhost/127.0.0.1/::1). */
@@ -191,6 +206,9 @@ function serializeConfig(config: VoiceConfig, scope: VoiceSettingsScope): VoiceC
 		localEndpoint: (scope === "project" && config.localEndpoint && !isLoopbackEndpoint(config.localEndpoint))
 			? undefined
 			: config.localEndpoint,
+		// Shortcut registration is static at extension load time, so project-scoped
+		// overrides cannot be applied correctly.
+		toggleShortcut: scope === "project" ? undefined : config.toggleShortcut,
 		onboarding: {
 			...config.onboarding,
 			schemaVersion: VOICE_CONFIG_VERSION,
