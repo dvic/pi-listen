@@ -94,11 +94,11 @@ pi-listen auto-detects your audio tool. No manual install needed if you already 
 
 All configuration lives in one place: `/voice-settings`. Four tabs cover everything you need.
 
-### General — backend, language, scope
+### General — backend, language, status, scope
 
-<img src="https://raw.githubusercontent.com/codexstar69/pi-listen/main/assets/settings-general.png" alt="General settings — backend, model, language, scope, voice toggle" width="600" />
+<img src="https://raw.githubusercontent.com/codexstar69/pi-listen/main/assets/settings-general.png" alt="General settings — backend, model, language, status, scope, voice toggle" width="600" />
 
-Toggle between Deepgram (cloud, live streaming) and Local (offline, batch mode). Change language, scope, and enable/disable voice — all with keyboard shortcuts.
+Toggle between Deepgram (cloud, live streaming) and Local (offline, batch mode). Change language, status label style, scope, and enable/disable voice — all with keyboard shortcuts.
 
 ### Models — browse, search, install
 

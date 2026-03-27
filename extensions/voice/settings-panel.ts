@@ -11,7 +11,7 @@
  */
 
 import { matchesKey, Key, truncateToWidth } from "@mariozechner/pi-tui";
-import type { VoiceConfig, VoiceSettingsScope } from "./config";
+import type { VoiceConfig, VoiceSettingsScope, VoiceStatusLabelStyle } from "./config";
 import { LOCAL_MODELS, getLanguagesForLocalModel, type LocalModelInfo, type LocalLangEntry } from "./local";
 import type { DeviceProfile, ModelFitness } from "./device";
 import { getFreeDiskSpace, formatBytes, getModelsDir, scanHandyModels, importHandyModel } from "./model-download";
@@ -265,6 +265,11 @@ export class VoiceSettingsPanel {
 				label: "Language",
 				value: this.getLangDisplay(),
 				hint: "change",
+			},
+			{
+				label: "Status",
+				value: this.getStatusLabelStyleDisplay(config.statusLabelStyle, useShort),
+				hint: "toggle",
 			},
 			{
 				label: "Scope",
@@ -553,11 +558,15 @@ export class VoiceSettingsPanel {
 				case 2: // Language picker
 					this.openLangPicker();
 					break;
-				case 3: // Scope toggle
+				case 3: // Status label style
+					config.statusLabelStyle = this.toggleStatusLabelStyle(config.statusLabelStyle);
+					this.save();
+					break;
+				case 4: // Scope toggle
 					config.scope = config.scope === "project" ? "global" : "project";
 					this.save();
 					break;
-				case 4: // Voice toggle
+				case 5: // Voice toggle
 					config.enabled = !config.enabled;
 					this.save();
 					break;
@@ -630,11 +639,20 @@ export class VoiceSettingsPanel {
 		this.p.saveConfig(config, config.scope === "project" ? "project" : "global", cwd);
 	}
 
+	private getStatusLabelStyleDisplay(style: VoiceStatusLabelStyle | undefined, useShort: boolean): string {
+		if (style === "classic") return useShort ? "Classic" : dim("Classic") + " (MIC STREAM)";
+		return useShort ? "Icons" : cyan("Icons") + " (󰍬 Cloud)";
+	}
+
+	private toggleStatusLabelStyle(style: VoiceStatusLabelStyle | undefined): VoiceStatusLabelStyle {
+		return style === "classic" ? "icons" : "classic";
+	}
+
 	// ─── Helpers ──────────────────────────────────────────────────────────
 
 	private getRowCount(tabId: TabId): number {
 		switch (tabId) {
-			case "general": return 5;
+			case "general": return 6;
 			case "models": return this.modelFiltered.length;
 			case "downloaded": {
 				const dl = this.getDownloaded().length;

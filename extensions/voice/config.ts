@@ -22,6 +22,7 @@ export interface VoiceOnboardingState {
 }
 
 export type VoiceBackend = "deepgram" | "local";
+export type VoiceStatusLabelStyle = "icons" | "classic";
 
 export interface VoiceConfig {
 	version: number;
@@ -37,6 +38,8 @@ export interface VoiceConfig {
 	localModel?: string;
 	/** Local transcription server URL (default: http://localhost:8080) */
 	localEndpoint?: string;
+	/** Status bar label style */
+	statusLabelStyle?: VoiceStatusLabelStyle;
 }
 
 export interface LoadedVoiceConfig {
@@ -59,6 +62,7 @@ export const DEFAULT_CONFIG: VoiceConfig = {
 	backend: undefined, // undefined = "deepgram" (default)
 	localModel: undefined,
 	localEndpoint: undefined,
+	statusLabelStyle: "icons",
 	onboarding: {
 		completed: false,
 		schemaVersion: VOICE_CONFIG_VERSION,
@@ -115,6 +119,7 @@ function migrateConfig(rawVoice: any, source: VoiceConfigSource): VoiceConfig {
 		backend: rawVoice.backend === "local" ? "local" : undefined,
 		localModel: typeof rawVoice.localModel === "string" ? rawVoice.localModel : undefined,
 		localEndpoint: typeof rawVoice.localEndpoint === "string" ? rawVoice.localEndpoint : undefined,
+		statusLabelStyle: rawVoice.statusLabelStyle === "classic" ? "classic" : DEFAULT_CONFIG.statusLabelStyle,
 		onboarding: normalizeOnboarding(rawVoice.onboarding, fallbackCompleted),
 	};
 }
