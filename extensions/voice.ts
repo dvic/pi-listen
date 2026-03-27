@@ -77,6 +77,7 @@ import {
 	type VoiceConfig,
 	type VoiceSettingsScope,
 } from "./voice/config";
+import { formatVoiceStatus } from "./voice/status-labels";
 import { finalizeOnboardingConfig, runVoiceOnboarding, pickLanguage, languageDisplayName, modelForLanguage } from "./voice/onboarding";
 import { buildDeepgramWsUrl, resolveDeepgramApiKey, SAMPLE_RATE, CHANNELS } from "./voice/deepgram";
 import {
@@ -694,37 +695,16 @@ export default function (pi: ExtensionAPI) {
 
 	function updateVoiceStatus() {
 		if (!ctx?.hasUI) return;
-		switch (voiceState) {
-			case "idle": {
-				if (!config.enabled) {
-					ctx.ui.setStatus("voice", undefined);
-					break;
-				}
-				const modeTag = !config.onboarding.completed ? "SETUP" : config.backend === "local" ? "LOCAL" : "STREAM";
-				ctx.ui.setStatus("voice", `MIC ${modeTag}`);
-				break;
-			}
-			case "warmup":
-				ctx.ui.setStatus("voice", "MIC HOLD...");
-				break;
-			case "recording": {
-				const secs = Math.round((Date.now() - recordingStart) / 1000);
-				// Live audio level meter in status bar
-				const meterLen = 4;
-				const meterFilled = Math.round(audioLevelSmoothed * meterLen);
-				const meter = "█".repeat(meterFilled) + "░".repeat(meterLen - meterFilled);
-				ctx.ui.setStatus("voice", `REC ${secs}s ${meter}`);
-				break;
-			}
-			case "finalizing":
-				if (config.backend === "local") {
-					ctx.ui.setStatus("voice", "STT...");
-				} else {
-					// Don't show "STT..." — live transcript handles it
-					ctx.ui.setStatus("voice", "");
-				}
-				break;
-		}
+		ctx.ui.setStatus("voice", formatVoiceStatus({
+			state: voiceState,
+			enabled: config.enabled,
+			onboardingCompleted: config.onboarding.completed,
+			backend: config.backend,
+			style: config.statusLabelStyle,
+			nowMs: Date.now(),
+			recordingStartMs: recordingStart,
+			audioLevelSmoothed,
+		}));
 	}
 
 	function setVoiceState(newState: VoiceState) {

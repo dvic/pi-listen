@@ -93,7 +93,7 @@ SoX's `rec` command ran but produced zero audio data. This usually means a permi
 
 ### What to check
 - `/voice info` — confirm `enabled: true` and `setup: complete`
-- The status bar should show `MIC STREAM` when voice is ready
+- The status bar should show `󰍬 Cloud` when voice is ready (`MIC STREAM` if you switch Status back to Classic)
 
 ## Symptom: voice triggers accidentally while typing
 

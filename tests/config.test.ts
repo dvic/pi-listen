@@ -266,6 +266,39 @@ describe("saveConfig", () => {
 		expect(saved.voice.localEndpoint).toBe("http://localhost:8080");
 	});
 
+	test("persists status label style", () => {
+		const cwd = makeTempDir();
+		const agentDir = path.join(cwd, "agent-home");
+		const config: VoiceConfig = {
+			...DEFAULT_CONFIG,
+			scope: "global",
+			statusLabelStyle: "classic",
+			onboarding: { completed: true, schemaVersion: DEFAULT_CONFIG.version },
+		};
+
+		const savedPath = saveConfig(config, "global", cwd, { agentDir });
+		const saved = JSON.parse(fs.readFileSync(savedPath, "utf8"));
+
+		expect(saved.voice.statusLabelStyle).toBe("classic");
+	});
+
+	test("defaults status label style during migration", () => {
+		const cwd = makeTempDir();
+		const agentDir = path.join(cwd, "agent-home");
+		writeSettings(agentDir, "settings.json", {
+			enabled: true,
+			language: "en",
+			onboarding: {
+				completed: true,
+				schemaVersion: DEFAULT_CONFIG.version,
+			},
+		});
+
+		const result = loadConfigWithSource(cwd, { agentDir });
+
+		expect(result.config.statusLabelStyle).toBe(DEFAULT_CONFIG.statusLabelStyle);
+	});
+
 	test("atomic write leaves no .tmp files after save", () => {
 		const cwd = makeTempDir();
 		const agentDir = path.join(cwd, "agent-home");
